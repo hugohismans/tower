@@ -9,6 +9,8 @@ Deux styles graphiques au choix dans le menu : **Désert** (couleurs) et **Papie
 
 Pour jouer : ouvre `index.html` dans un navigateur (pas de build, pas de dépendance).
 
+Analyse d'équilibrage : [`equilibrage.html`](equilibrage.html) (simulation dans `tools/balance.js`).
+
 ## Sauvegarde
 
 La partie en cours est sauvegardée automatiquement dans le navigateur (toutes les 3 s pendant
@@ -51,7 +53,7 @@ pour sauter directement à la nuit. Le record n'est pas enregistré dans ce mode
 | Dynamiteur | 9 | 45 | Pose sa dynamite contre le mur (110 dégâts). Abattu avant : il explose sur ses voisins |
 | Rampant | 11 | 18 | Petite araignée mécanique, en essaim de 8, explose contre le mur |
 | Médecin | 12 | 60 | Reste en arrière et soigne les ennemis autour de lui |
-| Drone | 13 | 50 | Vole au-dessus du toit et lâche des bombes. Seul le joueur peut le toucher |
+| Drone | 13 | 50 | Vole devant la façade et lance des grenades sur le bâtiment. Seul le joueur peut le toucher |
 | Arachnide | 15 | 350 | Araignée mécanique rapide, zigzague, salves de 4 missiles. Œil = point faible. En mourant, explose et lâche 3 rampants |
 | Mortier | 17 | 70 | Tout au fond, obus en cloche sur le toit (interceptables) |
 | Hélicoptère | 18 | 600 | Reste en l'air et tire des roquettes. Seul le joueur peut le toucher |
@@ -83,13 +85,14 @@ Les PV augmentent de 7 % par jour, le nombre d'ennemis aussi.
 
 - **Bâtiment** : réparer le mur, renforcer le mur (Palissade → Béton armé, 6 niveaux),
   réparer le bâtiment, construire des étages (1 à 5, +300 PV chacun).
-- **Tireurs** : tous cachés dans la maison, nombre illimité, prix fixe (achat par 1 ou par 10).
+- **Tireurs** : tous cachés dans la maison, nombre illimité (achat par 1 ou par 10).
+  Le prix augmente un peu à chaque achat du même type.
   Chaque type est débloqué par un étage et tire depuis cet étage.
 
   | Type | Étage requis | Prix | Tir |
   |---|---|---|---|
-  | Tireur | 1 | 80 $ | 1 balle / 5 s, 25 dégâts, touche toujours |
-  | Sniper | 2 | 250 $ | 1 balle / 5 s, 80 dégâts, 35 % de tirs à la tête (×2,5) |
-  | Lance-roquettes | 3 | 600 $ | 1 roquette / 7 s, 160 dégâts de zone, vise les groupes et les tanks |
-- **Ton arme** : dégâts, cadence, rechargement, et évolution
+  | Tireur | 1 | 60 $ + 6 $ par tireur déjà acheté | 1 balle / 5 s, 25 dégâts, touche toujours |
+  | Sniper | 2 | 500 $ + 30 $ par sniper | 1 balle / 5 s, 80 dégâts, 35 % de tirs à la tête (×2,5) |
+  | Lance-roquettes | 3 | 900 $ + 70 $ par lance-roquettes | 1 roquette / 7 s, 160 dégâts de zone, vise les groupes et les tanks |
+- **Ton arme** : dégâts (sans limite, +30 % de prix par niveau), cadence, rechargement, et évolution
   Fusil de sniper → Sniper lourd (traverse 3 ennemis) → Fusil d'assaut → Minigun.

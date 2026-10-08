@@ -119,7 +119,7 @@ const ENEMY = {
   dynamite: { name: 'Dynamiteur',      hp: 45,   speed: 52, melee: true, dmg: 110, rate: 1,   reward: 14, s: 1,    half: 6, plant: 1.4 },
   crawler:  { name: 'Rampant',         hp: 18,   speed: 85, melee: true, dmg: 14, rate: 1,    reward: 3,  s: 1,    half: 4, plant: 0.05, mech: true },
   medic:    { name: 'Médecin',         hp: 60,   speed: 28, range: [200, 260], reward: 15, s: 1, half: 6, heal: 10, healR: 60 },
-  drone:    { name: 'Drone',           hp: 50,   speed: 45, fly: 70,  dmg: 18, rate: 0.33, reward: 12, s: 1, half: 0, mech: true },
+  drone:    { name: 'Drone',           hp: 50,   speed: 45, fly: 52,  dmg: 18, rate: 0.33, reward: 12, s: 1, half: 0, mech: true },
   arachnid: { name: 'Arachnide',       hp: 350,  speed: 70, range: [160, 230], dmg: 30, rate: 0.2, reward: 45, s: 1, half: 20, mech: true, salvo: 4 },
   mortar:   { name: 'Mortier',         hp: 70,   speed: 24, range: [360, 420], dmg: 35, rate: 0.16, reward: 18, s: 1, half: 6 },
   heli:     { name: 'Hélicoptère',     hp: 600,  speed: 40, fly: 105, dmg: 30, rate: 0.28, reward: 70, s: 1, half: 0, mech: true },
@@ -149,7 +149,7 @@ const WEAPONS = [
   { name: 'Fusil de sniper', dmg: 45, auto: false, interval: 0.7,  mag: 5,   reload: 1.8, spread: 0,  pierce: 1, cost: 0,    kick: 9, desc: '' },
   { name: 'Sniper lourd',    dmg: 95, auto: false, interval: 0.8,  mag: 6,   reload: 1.8, spread: 0,  pierce: 3, cost: 450,  kick: 12,
     desc: 'Dégâts doublés, la balle traverse 3 ennemis.' },
-  { name: "Fusil d'assaut",  dmg: 26, auto: true,  interval: 0.11, mag: 30,  reload: 1.9, spread: 13, pierce: 1, cost: 1100, kick: 2.5,
+  { name: "Fusil d'assaut",  dmg: 45, auto: true,  interval: 0.11, mag: 30,  reload: 1.9, spread: 13, pierce: 1, cost: 1100, kick: 2.5,
     desc: 'Tir automatique : garde le doigt appuyé.' },
   { name: 'Minigun',         dmg: 22, auto: true,  interval: 0.04, mag: 200, reload: 3.2, spread: 20, pierce: 1, cost: 2600, kick: 1.6,
     desc: 'Le dernier recours. 25 balles par seconde.' },
@@ -158,13 +158,15 @@ const WEAPONS = [
 // Tireurs cachés dans la maison : nombre illimité, prix fixe.
 // Chaque type est débloqué par un étage et tire depuis cet étage.
 const SQUADS = {
-  shooter: { name: 'Tireur', floor: 1, cost: 80, interval: 5, dmg: 25,
+  shooter: { name: 'Tireur', floor: 1, cost: 60, step: 6, interval: 5, dmg: 25,
              desc: 'Tire une balle toutes les 5 s et touche à chaque fois.' },
-  sniper:  { name: 'Sniper', floor: 2, cost: 250, interval: 5, dmg: 80, head: 0.35,
+  sniper:  { name: 'Sniper', floor: 2, cost: 500, step: 30, interval: 5, dmg: 80, head: 0.35,
              desc: 'Un tireur bien plus puissant, qui vise souvent la tête.' },
-  rocket:  { name: 'Lance-roquettes', floor: 3, cost: 600, interval: 7, dmg: 160, splash: 45,
+  rocket:  { name: 'Lance-roquettes', floor: 3, cost: 900, step: 70, interval: 7, dmg: 160, splash: 45,
              desc: 'Une roquette toutes les 7 s, dégâts de zone. Vise les groupes et les tanks.' },
 };
+// Prix du prochain tireur de ce type : il augmente un peu à chaque achat
+const squadPrice = (type, extra = 0) => SQUADS[type].cost + SQUADS[type].step * (S.squads[type].length + extra);
 
 const WALL_NAMES = ['Palissade', 'Mur de briques', 'Mur de pierre', 'Rempart', 'Béton', 'Béton armé'];
 const wallMax = lvl => 220 + lvl * 240;
@@ -445,7 +447,7 @@ function spawn(type, demo, o = {}) {
   };
   if (type === 'walker') { e.legMax = hp * 0.3; e.legs = [e.legMax, e.legMax]; }
   if (type === 'worm') { e.state = 'travel'; e.emerge = 0; e.timer = 0; }
-  if (type === 'drone') { e.hoverX = rand(BX0 + 10, BX1 - 10); e.tz = rand(BZ0 + 15, BZ1 - 15); }
+  if (type === 'drone') { e.hoverX = BX0 - rand(18, 40); e.tz = rand(BZ0 + 15, BZ1 - 15); }
   S.enemies.push(e);
   return e;
 }
@@ -665,7 +667,7 @@ function updateWorm(e, dt, speed) {
   e.swing = Math.max(0, (e.swing || 0) - dt);
 }
 
-// Drones (au-dessus du toit, lâchent des bombes) et hélicoptères (tirent des roquettes)
+// Drones (devant la façade, lâchent des grenades) et hélicoptères (tirent des roquettes)
 function updateFlyer(e, dt, speed) {
   const def = e.def;
   e.walk += dt * 30;
@@ -673,13 +675,14 @@ function updateFlyer(e, dt, speed) {
   if (e.x < tx - 0.5) { e.x = Math.min(tx, e.x + speed * dt); e.attacking = false; }
   else e.attacking = true;
   if (e.type === 'drone' && e.x > WALL_X - 60) e.z += (e.tz - e.z) * Math.min(1, dt * 1.5);
-  const base = e.type === 'drone' ? Math.max(def.fly, bldH() + 24) : def.fly;
-  e.alt = base + e.altOff + Math.sin(e.t * 2 + e.phase) * 3;
+  // Toujours sous la barre du haut de l'écran, pour rester touchable
+  const maxAlt = CAM_H + (HOR - 105) * e.z / F;
+  e.alt = Math.min(maxAlt, def.fly + e.altOff * 0.8 + Math.sin(e.t * 2 + e.phase) * 3);
   if (!e.attacking) return;
   e.cd -= dt;
   if (e.cd > 0) return;
   e.cd = 1 / def.rate;
-  if (e.type === 'drone') S.proj.push({ kind: 'bomb', x0: e.x, y0: e.alt - 4, z0: e.z, x1: e.x, y1: bldH(), z1: e.z, t: 0, dur: 0.5, arc: 0, dmg: def.dmg * e.dmgMul });
+  if (e.type === 'drone') S.proj.push({ kind: 'bomb', x0: e.x, y0: e.alt - 4, z0: e.z, x1: BX0, y1: rand(4, Math.min(bldH() - 4, e.alt)), z1: clamp(e.z, BZ0 + 5, BZ1 - 5), t: 0, dur: 0.45, arc: 6, dmg: def.dmg * e.dmgMul });
   else { e.muzzle = 0.15; launchRocket(e.x + 20, e.alt - 6, e.z, def.dmg * e.dmgMul, 1.4); }
 }
 
@@ -2046,13 +2049,14 @@ const SHOP = [
     ...Object.entries(SQUADS).map(([type, d]) => ({
       id: type, name: () => d.name, multi: 10,
       desc: () => `Étage ${d.floor}. ${d.desc} Caché, illimité. ${S.squads[type].length} en poste.`,
-      cost: () => d.cost,
+      cost: () => squadPrice(type),
+      costN: n => Array.from({ length: n }, (_, i) => squadPrice(type, i)).reduce((a, b) => a + b, 0),
       lock: () => S.bld.floors < d.floor ? `Il faut ${d.floor} étages` : null,
       buy: () => { S.squads[type].push(rand(0, d.interval)); } })),
   ] },
   { group: 'Ton arme', items: [
-    { id: 'dmg', name: () => `Dégâts (niv. ${S.w.dmg}/10)`, desc: () => '+22 % de dégâts par balle.',
-      cost: () => Math.round(90 * Math.pow(1.55, S.w.dmg)), lock: () => S.w.dmg >= 10 ? 'Max' : null, buy: () => { S.w.dmg++; } },
+    { id: 'dmg', name: () => `Dégâts (niv. ${S.w.dmg})`, desc: () => '+22 % de dégâts par balle. Sans limite.',
+      cost: () => Math.round(90 * Math.pow(1.3, S.w.dmg)), lock: () => null, buy: () => { S.w.dmg++; } },
     { id: 'rate', name: () => `Cadence (niv. ${S.w.rate}/8)`, desc: () => '+12 % de tirs par seconde.',
       cost: () => Math.round(110 * Math.pow(1.55, S.w.rate)), lock: () => S.w.rate >= 8 ? 'Max' : null, buy: () => { S.w.rate++; } },
     { id: 'reload', name: () => `Rechargement (niv. ${S.w.reload}/6)`, desc: () => 'Recharge 18 % plus vite.',
@@ -2096,11 +2100,13 @@ function renderShop() {
       if (it.multi && !lock) {
         const n = it.multi, b2 = document.createElement('button');
         b2.id = `buy-${it.id}-x${n}`;
-        b2.textContent = `×${n} : ${cost * n} $`;
-        b2.disabled = S.money < cost * n;
+        const total = it.costN(n);
+        b2.textContent = `×${n} : ${total} $`;
+        b2.disabled = S.money < total;
         b2.addEventListener('click', () => {
-          if (S.money < it.cost() * n) return;
-          S.money -= it.cost() * n;
+          const c = it.costN(n);
+          if (S.money < c) return;
+          S.money -= c;
           for (let i = 0; i < n; i++) it.buy();
           sfx('cash');
           renderShop();

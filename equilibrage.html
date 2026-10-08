@@ -1,0 +1,262 @@
+<title>Équilibrage de Sniper</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Rye&display=swap">
+<style>
+/* Layout : carnet d'analyse sur une colonne de lecture (~68ch), graphiques pleine largeur de la colonne,
+   tableaux dans leur propre défilement. Identité reprise du jeu : sable, encre brune, accent orange. */
+:root {
+  --bg: #fbf6ee;
+  --panel: #fffaf2;
+  --ink: #2e2219;
+  --muted: #7a6656;
+  --line: #e6d8c4;
+  --accent: #c4531f;
+  --good: #2f7d32;
+  --warn: #b26a00;
+  --bad: #c0392b;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --grid: #ece2d3;
+  --f-display: "Rye", Georgia, serif;
+  --f-body: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1c1612; --panel: #251d17; --ink: #f2e8da; --muted: #b9a693; --line: #3b2f25;
+    --accent: #f08a50; --good: #6cc070; --warn: #e3a33a; --bad: #ef6b5e;
+    --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --grid: #31271f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1c1612; --panel: #251d17; --ink: #f2e8da; --muted: #b9a693; --line: #3b2f25;
+  --accent: #f08a50; --good: #6cc070; --warn: #e3a33a; --bad: #ef6b5e;
+  --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --grid: #31271f;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 1rem/1.55 var(--f-body); }
+.wrap { max-width: 860px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 64px; display: grid; gap: 28px; }
+.prose { max-width: 68ch; }
+header { display: grid; gap: 6px; border-bottom: 2px solid var(--line); padding-bottom: 18px; }
+.eyebrow { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 2.4rem/1.1 var(--f-display); margin: 0; color: var(--accent); text-wrap: balance; }
+h2 { font: 600 1.35rem/1.25 var(--f-body); margin: 0 0 6px; text-wrap: balance; }
+h3 { font: 600 1.05rem/1.3 var(--f-body); margin: 0 0 4px; }
+p { margin: 0 0 10px; }
+.lede { font-size: 1.1rem; color: var(--muted); }
+section { display: grid; gap: 10px; }
+.status { display: inline-flex; gap: 8px; align-items: center; font-weight: 600; font-size: 0.9rem; }
+.pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.82rem; font-weight: 600; border: 1.5px solid currentColor; }
+.pill.good { color: var(--good); } .pill.warn { color: var(--warn); } .pill.bad { color: var(--bad); }
+.keys { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.key { background: var(--panel); border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+.key b { display: block; font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.key span { color: var(--muted); font-size: 0.9rem; }
+.table-scroll { overflow-x: auto; border: 1.5px solid var(--line); border-radius: 12px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 0.92rem; }
+th, td { text-align: right; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-weight: 600; color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+th:first-child, td:first-child { text-align: left; }
+td.txt { text-align: left; }
+tr:last-child td { border-bottom: 0; }
+.chart { background: var(--panel); border: 1.5px solid var(--line); border-radius: 12px; padding: 14px 14px 8px; display: grid; gap: 8px; position: relative; }
+.chart-head { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; justify-content: space-between; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.88rem; color: var(--muted); }
+.legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+svg { width: 100%; height: auto; display: block; overflow: visible; }
+svg text { font-family: var(--f-body); fill: var(--muted); font-size: 12px; }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); border-radius: 8px; padding: 6px 10px; font-size: 0.85rem; line-height: 1.35; min-width: 150px; font-variant-numeric: tabular-nums; }
+.tip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.note { font-size: 0.9rem; color: var(--muted); }
+ul { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+details summary { cursor: pointer; font-weight: 600; }
+details[open] summary { margin-bottom: 10px; }
+code { font-size: 0.9em; background: var(--line); padding: 1px 5px; border-radius: 4px; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Carnet d'analyse · Sniper</span>
+    <h1>Équilibrage de Sniper</h1>
+    <p class="lede prose">Est-ce qu'on gagne assez d'argent pour suivre la difficulté, et est-ce que le joueur reste utile quand la maison est pleine de tireurs ? Simulation jour par jour, du jour 1 au jour 90.</p>
+    <span class="status">État : <span class="pill good">Appliqué dans le jeu</span> nouveaux prix, fusil d'assaut à 45, « Dégâts » sans limite.</span>
+  </header>
+
+  <section class="prose">
+    <h2>Méthode</h2>
+    <p>Un petit script (<code>tools/balance.js</code>) reprend les formules exactes du jeu : nombre d'ennemis par jour, points de vie (+7 % par jour), élites, boss, plafond de 150 ennemis, récompenses et prime de nuit.</p>
+    <p>Un joueur « optimal » dépense chaque nuit 85 % de son argent dans ce qui rapporte le plus de dégâts par seconde par dollar, et garde 15 % pour les réparations. Son tir compte environ 75 % de balles au but et quelques tirs dans la tête.</p>
+    <p>Chaque jour, on compare les <b>dégâts par seconde nécessaires</b> (vie totale des ennemis ÷ durée du jour) aux <b>dégâts par seconde disponibles</b> (joueur + tireurs). Le rapport est la <b>marge</b> : 2 = confortable, 1,3 = tendu, sous 1 = on perd.</p>
+  </section>
+
+  <section>
+    <h2>Les trois scénarios comparés</h2>
+    <div class="keys">
+      <div class="key"><h3><i style="display:inline-block;width:12px;height:3px;background:var(--series-1);vertical-align:middle;margin-right:6px"></i>Avant : prix fixes</h3><span>Tireur 80 $, sniper 250 $, lance-roquettes 600 $, quel que soit le nombre acheté.</span></div>
+      <div class="key"><h3><i style="display:inline-block;width:12px;height:3px;background:var(--series-2);vertical-align:middle;margin-right:6px"></i>Nouveaux prix seuls</h3><span>Tireur 60 $ + 6 $, sniper 500 $ + 30 $, lance-roquettes 900 $ + 70 $ par unité déjà achetée.</span></div>
+      <div class="key"><h3><i style="display:inline-block;width:12px;height:3px;background:var(--series-3);vertical-align:middle;margin-right:6px"></i>Nouveaux prix + corrections</h3><span>En plus : fusil d'assaut à 45 dégâts par balle, amélioration « Dégâts » sans limite (+30 % de prix par niveau). C'est ce qui est dans le jeu.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="chart" id="chartMarge">
+      <div class="chart-head">
+        <h2>Marge par jour</h2>
+        <div class="legend" aria-hidden="true"></div>
+      </div>
+      <p class="note">Au-dessus de la ligne « on perd », le joueur optimal tient. Passe sur le graphique pour lire chaque jour.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="chart" id="chartPart">
+      <div class="chart-head">
+        <h2>Part des dégâts faite par le joueur</h2>
+        <div class="legend" aria-hidden="true"></div>
+      </div>
+      <p class="note">Le reste vient des tireurs cachés. L'objectif : le joueur doit toujours compter.</p>
+    </div>
+  </section>
+
+  <section class="prose">
+    <h2>Ce que montrent les chiffres</h2>
+    <h3><span class="pill bad">Avant</span> Prix fixes : cassé</h3>
+    <p>Le sniper à 250 $ est tellement rentable que le joueur optimal en a 300 au jour 40 et 1 500 au jour 90. La marge reste autour de 4 jusqu'au jour 90 : le jeu est trop facile, et le tir du joueur ne pèse plus que 4 % au jour 40, 1 % au jour 90.</p>
+    <h3><span class="pill warn">Nouveaux prix seuls</span> Mieux, mais deux défauts</h3>
+    <ul>
+      <li>Le fusil d'assaut (26 dégâts) est moins fort que le sniper lourd : ~90 dégâts/s contre ~110. Personne ne l'achète, donc personne n'atteint le minigun.</li>
+      <li>L'amélioration « Dégâts » s'arrêtait au niveau 10 : après le jour 40 l'arme ne progresse plus, et la part du joueur tombe à 11 % au jour 90.</li>
+    </ul>
+    <h3><span class="pill good">Nouveaux prix + corrections</span> Le bon compromis</h3>
+    <ul>
+      <li>Le joueur fait toujours au moins <b>30 %</b> des dégâts, et reste le seul à toucher drones et hélicos, à intercepter les missiles et à viser la gueule du Ver.</li>
+      <li>On finit avec une centaine de tireurs. Le sniper devient plus rentable que le tireur vers le <b>8<sup>e</sup> tireur</b>.</li>
+      <li>Courbe : facile jusqu'au jour 5, premier pic aux jours 6-7 (marge 1,3), confortable du jour 10 au jour 40 (2 à 2,7), marche au jour 35 (élites), resserrement du jour 45 au jour 70 (1,5 à 1,2), mur vers le jour 80-90 même pour un joueur parfait.</li>
+      <li>Un joueur réel, moins précis, devrait plutôt tenir <b>jusqu'au jour 40 à 60</b>.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Jours clés, version appliquée</h2>
+    <div class="table-scroll"><table id="keyTable"></table></div>
+  </section>
+
+  <section class="prose">
+    <h2>Points à surveiller</h2>
+    <ul>
+      <li><b>Mutation Blindés</b> : −6 dégâts par balle par cumul. Les tireurs (25) y perdent beaucoup, les snipers presque rien. Cohérent, mais sévère à 3 cumuls.</li>
+      <li><b>Boucliers</b> : ils ne prennent que 15 % des balles des tireurs. Ça pousse vers les snipers et les roquettes.</li>
+      <li><b>Jours 6-7</b> : premier vrai pic de difficulté (lance-roquettes + boucliers), à tester en vrai.</li>
+      <li><b>Jour 35</b> : saut de vie totale (95 000 → 168 000) dû aux élites et au plafond.</li>
+    </ul>
+    <h2>Limites</h2>
+    <p>La simulation raisonne sur une moyenne de dégâts sur toute la journée. Elle ne voit pas les rushs (cavaliers qui arrivent d'un coup), ni la précision réelle du doigt sur téléphone, ni les dégâts subis par le mur. C'est une tendance, pas une garantie. Pour relancer : <code>node tools/balance.js final</code> (ou <code>actuel</code>, <code>prix</code>).</p>
+  </section>
+
+  <section>
+    <details>
+      <summary>Toutes les valeurs, jour par jour</summary>
+      <div class="table-scroll"><table id="fullTable"></table></div>
+    </details>
+  </section>
+</div>
+
+<script>
+const DATA = {"actuel":[[1,3.88,100,320,11,95,41,0,0,0,0,"sniper+0",""],[2,2.66,89,610,17,143,41,5,1,0,0,"sniper+0",""],[3,2.37,91,935,23,191,50,5,1,0,0,"sniper+1",""],[4,1.92,92,1512,34,265,60,5,1,0,0,"sniper+2",""],[5,1.59,75,2509,50,363,60,20,4,0,0,"sniper+2",""],[6,1.32,75,3328,61,454,60,20,4,0,0,"sniper+2",""],[7,1.37,55,4743,79,581,60,49,5,1,0,"sniper+2",""],[8,1.75,77,7934,122,791,164,49,5,1,0,"lourd+2",""],[9,2.16,75,9305,133,908,214,73,5,2,0,"lourd+3",""],[10,1.84,64,14580,194,1084,231,127,6,4,0,"lourd+3","walker"],[11,2.28,52,15477,193,1295,231,209,8,7,0,"lourd+3",""],[12,2.38,43,19397,228,1508,231,312,9,11,0,"lourd+3",""],[13,2.74,35,21784,242,1649,231,432,9,16,0,"lourd+3",""],[14,2.8,29,26937,284,1909,231,564,11,21,0,"lourd+3",""],[15,3.11,24,30479,305,2061,231,717,13,27,0,"lourd+3",""],[16,3.43,21,32587,326,2037,231,886,13,34,0,"lourd+3",""],[17,3.66,18,34839,348,2063,231,1046,16,40,0,"lourd+3",""],[18,3.62,17,38541,385,2131,231,1164,16,47,0,"lourd+3",""],[19,3.7,15,42073,421,2189,231,1327,16,54,0,"lourd+3",""],[20,3.67,13,47720,477,2432,231,1519,18,61,0,"lourd+3","worm"],[21,3.99,12,48038,480,2215,231,1684,18,69,0,"lourd+3",""],[22,3.8,11,55079,551,2355,231,1864,20,76,0,"lourd+3",""],[23,4.2,10,53939,539,2287,231,2036,20,84,0,"lourd+3",""],[24,3.97,9,61546,615,2388,231,2215,22,91,0,"lourd+3",""],[25,3.31,9,79294,793,3228,231,2396,23,99,0,"lourd+3",""],[26,3.1,8,93075,931,3501,231,2651,26,109,0,"lourd+3",""],[27,3.37,7,92943,929,3493,231,2905,28,120,0,"lourd+3",""],[28,3.2,7,107060,1071,3761,231,3195,28,132,0,"lourd+3",""],[29,3.48,6,106373,1064,3698,231,3468,30,144,0,"lourd+3",""],[30,4.11,7,95489,955,4142,261,3666,31,155,0,"lourd+4","queen"],[31,3.55,6,121179,1212,3909,261,4044,31,169,0,"lourd+4",""],[32,3.32,6,139484,1395,4236,261,4369,32,182,0,"lourd+4",""],[33,3.37,5,146661,1467,4314,261,4682,33,196,0,"lourd+4",""],[34,3.41,5,154924,1549,4369,261,5028,35,210,0,"lourd+4",""],[35,3.35,5,167997,1680,4610,261,5368,35,225,0,"lourd+4",""],[36,3.46,4,173284,1733,4578,261,5734,37,240,0,"lourd+4",""],[37,3.45,4,183515,1835,4726,261,6069,38,255,0,"lourd+4",""],[38,3.4,4,197036,1970,4925,261,6447,38,271,0,"lourd+4",""],[39,3.44,4,206427,2064,5005,261,6838,38,288,0,"lourd+4",""],[40,4.17,4,176547,1765,5588,261,7093,38,305,0,"lourd+4","walker 2"],[41,3.49,3,227210,2272,5175,261,7663,38,324,0,"lourd+4",""],[42,3.48,3,239435,2394,5334,261,8064,39,341,0,"lourd+4",""],[43,3.28,3,257432,2574,5568,261,8191,40,359,0,"lourd+4",""],[44,3.52,3,260689,2607,5471,261,8912,43,377,0,"lourd+4",""],[45,3.54,3,271306,2713,5565,261,9333,44,395,0,"lourd+4",""],[46,3.5,3,287247,2872,5750,261,9778,44,414,0,"lourd+4",""],[47,3.52,2,298058,2981,5816,261,10224,46,433,0,"lourd+4",""],[48,3.31,2,319099,3191,6034,261,10299,48,452,0,"lourd+4",""],[49,3.3,2,333748,3337,6161,261,10756,50,472,0,"lourd+4",""],[50,3.89,2,300791,3008,6930,261,11452,53,492,0,"lourd+4","worm 2"],[51,3.5,2,354207,3542,6267,261,12153,54,515,0,"lourd+4",""],[52,3.54,2,364036,3640,6297,261,12638,55,536,0,"lourd+4",""],[53,3.33,2,388885,3889,6551,261,12671,56,557,0,"lourd+4",""],[54,3.29,2,408685,4087,6718,261,13176,57,579,0,"lourd+4",""],[55,3.31,2,421590,4216,6780,270,13667,58,601,0,"lourd+4",""],[56,3.27,2,442097,4421,6948,270,14193,58,624,0,"lourd+4",""],[57,3.51,2,441349,4413,6839,270,15236,60,647,0,"lourd+4",""],[58,3.32,2,466479,4665,7034,270,15212,60,670,0,"lourd+4",""],[59,3.28,2,488109,4881,7230,270,15761,60,694,0,"lourd+4",""],[60,4.15,2,404997,4050,8341,270,16534,62,718,0,"lourd+4","queen 2"],[61,3.28,2,524101,5241,7418,270,16928,63,746,0,"lourd+4",""],[62,3.3,2,537789,5378,7475,270,17487,63,771,0,"lourd+4",""],[63,3.33,1,550327,5503,7538,270,18059,65,796,0,"lourd+4",""],[64,3.36,1,561986,5620,7523,270,18618,67,821,0,"lourd+4",""],[65,3.39,1,574399,5744,7536,270,19184,68,846,0,"lourd+4",""],[66,3.41,1,587769,5878,7573,270,19749,70,871,0,"lourd+4",""],[67,3.43,1,600235,6002,7576,270,20318,72,896,0,"lourd+4",""],[68,3.45,1,613681,6137,7639,270,20905,72,922,0,"lourd+4",""],[69,3.48,1,625367,6254,7631,270,21468,75,947,0,"lourd+4",""],[70,4.52,1,499132,4991,8572,270,22294,78,972,0,"lourd+4","walker 3"],[71,3.52,1,651863,6519,7670,270,22674,78,1001,0,"lourd+4",""],[72,3.55,1,661996,6620,7645,270,23250,78,1027,0,"lourd+4",""],[73,3.57,1,675960,6760,7707,270,23838,78,1053,0,"lourd+4",""],[74,3.56,1,693811,6938,7783,270,24432,79,1079,0,"lourd+4",""],[75,3.6,1,703115,7031,7745,270,25008,80,1105,0,"lourd+4",""],[76,3.6,1,718028,7180,7765,270,25593,81,1131,0,"lourd+4",""],[77,3.62,1,731298,7313,7795,270,26182,82,1157,0,"lourd+4",""],[78,3.62,1,746224,7462,7857,270,26777,84,1183,0,"lourd+4",""],[79,3.65,1,756332,7563,7804,270,27351,86,1209,0,"lourd+4",""],[80,4.36,1,658118,6581,9137,270,28435,87,1235,0,"lourd+4","worm 3"],[81,3.67,1,787555,7876,7897,270,28628,88,1266,0,"lourd+4",""],[82,3.68,1,800175,8002,7915,270,29216,90,1292,0,"lourd+4",""],[83,3.72,1,809611,8096,7876,270,29810,90,1319,0,"lourd+4",""],[84,3.7,1,829190,8292,7951,270,30409,92,1345,0,"lourd+4",""],[85,3.72,1,841669,8417,7968,270,31013,92,1372,0,"lourd+4",""],[86,3.73,1,854022,8540,7931,270,31606,92,1399,0,"lourd+4",""],[87,3.73,1,870793,8708,8004,270,32222,92,1426,0,"lourd+4",""],[88,3.74,1,884203,8842,8022,270,32829,93,1453,0,"lourd+4",""],[89,3.75,1,899865,8999,8040,270,33437,94,1480,0,"lourd+4",""],[90,4.67,1,744252,7443,9888,270,34520,95,1507,0,"lourd+4","queen 3"]],"prix":[[1,3.88,100,320,11,95,41,0,0,0,0,"sniper+0",""],[2,2.66,89,610,17,143,41,5,1,0,0,"sniper+0",""],[3,2.37,91,935,23,191,50,5,1,0,0,"sniper+1",""],[4,1.95,77,1512,34,265,50,15,3,0,0,"sniper+1",""],[5,1.59,75,2509,50,363,60,20,4,0,0,"sniper+2",""],[6,1.32,75,3328,61,454,60,20,4,0,0,"sniper+2",""],[7,1.25,60,4743,79,581,60,39,8,0,0,"sniper+2",""],[8,1.67,81,7934,122,791,164,39,8,0,0,"lourd+2",""],[9,2.03,86,9305,133,908,231,39,8,0,0,"lourd+3",""],[10,1.69,88,14580,194,1084,289,39,8,0,0,"lourd+4","walker"],[11,1.77,84,15477,193,1295,289,53,11,0,0,"lourd+4",""],[12,1.76,86,19397,228,1508,344,58,12,0,0,"lourd+5",""],[13,1.96,75,21784,242,1649,354,120,13,0,1,"lourd+5",""],[14,1.96,64,26937,284,1909,354,201,13,1,2,"lourd+5",""],[15,2.08,56,30479,305,2061,354,281,13,2,3,"lourd+5",""],[16,2.2,49,32587,326,2037,354,362,13,3,4,"lourd+5",""],[17,2.29,44,34839,348,2063,354,443,13,4,5,"lourd+5",""],[18,2.2,46,38541,385,2131,391,456,15,5,5,"lourd+6",""],[19,2.2,45,42073,421,2189,414,511,15,5,6,"lourd+6",""],[20,2.1,41,47720,477,2432,414,588,18,5,7,"lourd+6","worm"],[21,2.23,39,48038,480,2215,414,657,18,6,8,"lourd+6",""],[22,2.07,37,55079,551,2355,425,714,18,6,9,"lourd+6",""],[23,2.23,35,53939,539,2287,425,777,21,6,10,"lourd+6",""],[24,2.06,34,61546,615,2388,425,840,24,8,10,"lourd+6",""],[25,1.67,32,79294,793,3228,425,900,26,8,11,"lourd+6",""],[26,1.52,30,93075,931,3501,425,986,27,9,12,"lourd+6",""],[27,1.62,31,92943,929,3493,465,1036,27,9,13,"lourd+7",""],[28,1.49,29,107060,1071,3761,465,1127,29,10,14,"lourd+7",""],[29,1.57,28,106373,1064,3698,465,1209,31,11,15,"lourd+7",""],[30,1.82,27,95489,955,4142,465,1270,32,12,16,"lourd+7","queen"],[31,1.52,26,121179,1212,3909,475,1366,33,13,17,"lourd+7",""],[32,1.38,26,139484,1395,4236,502,1427,35,15,17,"lourd+7",""],[33,1.37,25,146661,1467,4314,502,1509,37,16,18,"lourd+7",""],[34,1.35,24,154924,1549,4369,502,1595,38,17,19,"lourd+7",""],[35,1.3,23,167997,1680,4610,502,1679,40,18,20,"lourd+7",""],[36,1.31,22,173284,1733,4578,502,1768,42,19,21,"lourd+7",""],[37,1.28,21,183515,1835,4726,502,1844,43,20,22,"lourd+7",""],[38,1.24,22,197036,1970,4925,545,1893,43,22,22,"lourd+8",""],[39,1.22,22,206427,2064,5005,545,1974,44,23,23,"lourd+8",""],[40,1.45,21,176547,1765,5588,545,2021,46,24,24,"lourd+8","walker 2"],[41,1.18,20,227210,2272,5175,545,2142,49,25,25,"lourd+8",""],[42,1.16,21,239435,2394,5334,574,2196,49,25,26,"lourd+8",""],[43,1.08,21,257432,2574,5568,574,2204,51,26,27,"lourd+8",""],[44,1.13,20,260689,2607,5471,574,2363,52,27,28,"lourd+8",""],[45,1.11,19,271306,2713,5565,574,2449,54,28,29,"lourd+8",""],[46,1.08,18,287247,2872,5750,574,2532,55,29,30,"lourd+8",""],[47,1.07,18,298058,2981,5816,574,2612,56,30,31,"lourd+8",""],[48,0.99,18,319099,3191,6034,574,2601,57,31,32,"lourd+8",""],[49,0.97,18,333748,3337,6161,574,2680,58,32,33,"lourd+8",""],[50,1.13,17,300791,3008,6930,574,2822,60,33,34,"lourd+8","worm 2"],[51,0.99,16,354207,3542,6267,574,2937,62,34,35,"lourd+8",""],[52,0.99,16,364036,3640,6297,574,3017,63,35,36,"lourd+8",""],[53,0.92,16,388885,3889,6551,574,2992,64,36,37,"lourd+8",""],[54,0.89,17,408685,4087,6718,620,3024,66,37,37,"lourd+9",""],[55,0.88,17,421590,4216,6780,620,3101,67,38,38,"lourd+9",""],[56,0.86,16,442097,4421,6948,620,3182,68,39,39,"lourd+9",""],[57,0.91,15,441349,4413,6839,620,3380,70,40,40,"lourd+9",""],[58,0.85,16,466479,4665,7034,620,3337,70,41,41,"lourd+9",""],[59,0.83,15,488109,4881,7230,620,3418,71,42,42,"lourd+9",""],[60,1.03,15,404997,4050,8341,620,3546,72,43,43,"lourd+9","queen 2"],[61,0.8,15,524101,5241,7418,650,3543,74,43,44,"lourd+9",""],[62,0.79,15,537789,5378,7475,650,3622,75,44,45,"lourd+9",""],[63,0.79,15,550327,5503,7538,650,3701,76,45,46,"lourd+9",""],[64,0.79,15,561986,5620,7523,650,3779,77,46,47,"lourd+9",""],[65,0.78,14,574399,5744,7536,650,3854,77,47,48,"lourd+9",""],[66,0.78,14,587769,5878,7573,650,3928,77,48,49,"lourd+9",""],[67,0.78,14,600235,6002,7576,650,4007,78,49,50,"lourd+9",""],[68,0.77,14,613681,6137,7639,650,4083,78,50,51,"lourd+9",""],[69,0.77,14,625367,6254,7631,650,4156,78,51,52,"lourd+9",""],[70,0.99,13,499132,4991,8572,650,4281,78,52,53,"lourd+9","walker 3"],[71,0.76,13,651863,6519,7670,650,4295,79,53,54,"lourd+9",""],[72,0.76,13,661996,6620,7645,650,4357,82,53,55,"lourd+9",""],[73,0.75,13,675960,6760,7707,650,4421,85,53,56,"lourd+9",""],[74,0.74,13,693811,6938,7783,650,4486,88,53,57,"lourd+9",""],[75,0.74,12,703115,7031,7745,650,4547,91,53,58,"lourd+9",""],[76,0.73,12,718028,7180,7765,650,4614,91,56,58,"lourd+9",""],[77,0.73,12,731298,7313,7795,650,4678,94,56,59,"lourd+9",""],[78,0.72,12,746224,7462,7857,650,4739,96,56,60,"lourd+9",""],[79,0.72,13,756332,7563,7804,698,4758,96,57,60,"lourd+10",""],[80,0.85,12,658118,6581,9137,698,4906,98,57,61,"lourd+10","worm 3"],[81,0.71,13,787555,7876,7897,698,4880,99,58,62,"lourd+10",""],[82,0.7,12,800175,8002,7915,698,4940,101,58,63,"lourd+10",""],[83,0.7,12,809611,8096,7876,698,5005,101,61,63,"lourd+10",""],[84,0.7,12,829190,8292,7951,698,5066,103,61,64,"lourd+10",""],[85,0.69,12,841669,8417,7968,698,5125,105,61,65,"lourd+10",""],[86,0.69,12,854022,8540,7931,698,5182,107,61,66,"lourd+10",""],[87,0.68,12,870793,8708,8004,698,5236,109,63,66,"lourd+10",""],[88,0.68,12,884203,8842,8022,698,5295,111,63,67,"lourd+10",""],[89,0.67,12,899865,8999,8040,698,5354,113,63,68,"lourd+10",""],[90,0.83,11,744252,7443,9888,698,5483,115,65,68,"lourd+10","queen 3"]],"final":[[1,3.88,100,320,11,95,41,0,0,0,0,"sniper+0",""],[2,2.66,89,610,17,143,41,5,1,0,0,"sniper+0",""],[3,2.37,91,935,23,191,50,5,1,0,0,"sniper+1",""],[4,2.07,86,1512,34,265,60,10,2,0,0,"sniper+2",""],[5,1.69,70,2509,50,363,60,25,5,0,0,"sniper+2",""],[6,1.69,71,3328,61,454,72,30,6,0,0,"sniper+3",""],[7,1.29,71,4743,79,581,72,29,6,0,0,"sniper+3",""],[8,1.84,85,7934,122,791,190,34,7,0,0,"lourd+3",""],[9,2.29,89,9305,133,908,270,34,7,0,0,"lourd+5",""],[10,1.95,91,14580,194,1084,345,34,7,0,0,"lourd+6","walker"],[11,2.04,90,15477,193,1295,357,39,8,0,0,"lourd+6",""],[12,2.41,93,19397,228,1508,512,39,8,0,0,"assaut+6",""],[13,2.76,94,21784,242,1649,630,39,8,0,0,"assaut+8",""],[14,2.73,93,26937,284,1909,722,53,11,0,0,"assaut+9",""],[15,2.83,86,30479,305,2061,744,119,13,0,1,"assaut+9",""],[16,2.97,87,32587,326,2037,844,124,14,0,1,"assaut+10",""],[17,3.04,80,34839,348,2063,844,214,16,1,2,"assaut+10",""],[18,2.93,75,38541,385,2131,844,287,17,2,3,"assaut+10",""],[19,2.88,71,42073,421,2189,867,346,18,2,4,"assaut+10",""],[20,2.73,71,47720,477,2432,926,375,18,3,4,"assaut+11","worm"],[21,2.91,70,48038,480,2215,975,424,18,3,5,"assaut+11",""],[22,2.68,66,55079,551,2355,975,504,18,4,6,"assaut+11",""],[23,2.88,63,53939,539,2287,975,578,18,5,7,"assaut+11",""],[24,2.64,60,61546,615,2388,975,648,21,5,8,"assaut+11",""],[25,2.13,61,79294,793,3228,1037,654,23,5,8,"assaut+12",""],[26,2.21,68,93075,931,3501,1391,662,24,5,8,"minigun+12",""],[27,2.35,67,92943,929,3493,1475,713,24,5,9,"minigun+12",""],[28,2.16,68,107060,1071,3761,1564,744,25,6,9,"minigun+13",""],[29,2.27,68,106373,1064,3698,1650,764,25,7,9,"minigun+13",""],[30,2.63,66,95489,955,4142,1650,858,25,7,11,"minigun+13","queen"],[31,2.18,66,121179,1212,3909,1744,895,26,8,11,"minigun+14",""],[32,1.97,64,139484,1395,4236,1744,1000,26,10,12,"minigun+14",""],[33,1.94,61,146661,1467,4314,1744,1105,26,10,14,"minigun+14",""],[34,1.91,59,154924,1549,4369,1744,1213,27,12,15,"minigun+14",""],[35,1.82,57,167997,1680,4610,1744,1312,27,14,16,"minigun+14",""],[36,1.82,55,173284,1733,4578,1744,1415,27,16,17,"minigun+14",""],[37,1.77,57,183515,1835,4726,1838,1415,28,16,17,"minigun+15",""],[38,1.7,55,197036,1970,4925,1838,1517,28,18,18,"minigun+15",""],[39,1.67,53,206427,2064,5005,1838,1617,28,20,19,"minigun+15",""],[40,1.99,52,176547,1765,5588,1838,1675,31,21,20,"minigun+15","walker 2"],[41,1.61,50,227210,2272,5175,1838,1815,32,21,22,"minigun+15",""],[42,1.56,49,239435,2394,5334,1838,1905,35,22,23,"minigun+15",""],[43,1.46,49,257432,2574,5568,1838,1926,38,23,24,"minigun+15",""],[44,1.5,47,260689,2607,5471,1838,2085,41,24,25,"minigun+15",""],[45,1.48,46,271306,2713,5565,1838,2171,43,25,26,"minigun+15",""],[46,1.43,47,287247,2872,5750,1932,2176,44,25,26,"minigun+16",""],[47,1.41,46,298058,2981,5816,1932,2261,46,26,27,"minigun+16",""],[48,1.32,46,319099,3191,6034,1932,2269,49,27,28,"minigun+16",""],[49,1.28,45,333748,3337,6161,1932,2352,51,28,29,"minigun+16",""],[50,1.47,44,300791,3008,6930,1932,2492,54,29,30,"minigun+16","worm 2"],[51,1.28,42,354207,3542,6267,1932,2618,54,31,31,"minigun+16",""],[52,1.27,42,364036,3640,6297,1932,2703,56,32,32,"minigun+16",""],[53,1.19,42,388885,3889,6551,1932,2692,58,33,33,"minigun+16",""],[54,1.15,41,408685,4087,6718,1932,2777,60,34,34,"minigun+16",""],[55,1.14,40,421590,4216,6780,1932,2857,62,35,35,"minigun+16",""],[56,1.1,40,442097,4421,6948,1932,2942,64,36,36,"minigun+16",""],[57,1.15,38,441349,4413,6839,1932,3132,66,37,37,"minigun+16",""],[58,1.08,38,466479,4665,7034,1932,3101,67,38,38,"minigun+16",""],[59,1.05,40,488109,4881,7230,2026,3103,67,38,38,"minigun+17",""],[60,1.3,39,404997,4050,8341,2026,3230,69,39,39,"minigun+17","queen 2"],[61,1.01,38,524101,5241,7418,2026,3278,69,39,41,"minigun+17",""],[62,1,38,537789,5378,7475,2026,3356,70,40,42,"minigun+17",""],[63,0.99,37,550327,5503,7538,2026,3439,72,41,43,"minigun+17",""],[64,0.99,37,561986,5620,7523,2026,3518,73,42,44,"minigun+17",""],[65,0.98,36,574399,5744,7536,2026,3599,75,43,45,"minigun+17",""],[66,0.97,36,587769,5878,7573,2026,3677,76,44,46,"minigun+17",""],[67,0.96,35,600235,6002,7576,2026,3756,77,45,47,"minigun+17",""],[68,0.95,35,613681,6137,7639,2026,3832,77,46,48,"minigun+17",""],[69,0.95,34,625367,6254,7631,2026,3909,78,47,49,"minigun+17",""],[70,1.21,33,499132,4991,8572,2026,4031,78,48,50,"minigun+17","walker 3"],[71,0.93,33,651863,6519,7670,2026,4052,80,49,51,"minigun+17",""],[72,0.93,33,661996,6620,7645,2026,4126,80,50,52,"minigun+17",""],[73,0.92,33,675960,6760,7707,2026,4202,80,51,53,"minigun+17",""],[74,0.91,32,693811,6938,7783,2026,4278,80,52,54,"minigun+17",""],[75,0.91,32,703115,7031,7745,2026,4339,83,52,55,"minigun+17",""],[76,0.9,31,718028,7180,7765,2026,4414,83,53,56,"minigun+17",""],[77,0.89,31,731298,7313,7795,2026,4478,86,53,57,"minigun+17",""],[78,0.88,31,746224,7462,7857,2026,4542,89,53,58,"minigun+17",""],[79,0.88,31,756332,7563,7804,2026,4606,89,56,58,"minigun+17",""],[80,1.03,30,658118,6581,9137,2026,4755,92,56,59,"minigun+17","worm 3"],[81,0.86,31,787555,7876,7897,2120,4655,92,56,59,"minigun+18",""],[82,0.85,31,800175,8002,7915,2120,4714,94,56,60,"minigun+18",""],[83,0.85,31,809611,8096,7876,2120,4775,97,56,61,"minigun+18",""],[84,0.84,30,829190,8292,7951,2120,4844,97,59,61,"minigun+18",""],[85,0.83,30,841669,8417,7968,2120,4903,99,59,62,"minigun+18",""],[86,0.83,30,854022,8540,7931,2120,4963,102,59,63,"minigun+18",""],[87,0.82,30,870793,8708,8004,2120,5024,104,59,64,"minigun+18",""],[88,0.81,29,884203,8842,8022,2120,5079,107,61,64,"minigun+18",""],[89,0.81,29,899865,8999,8040,2120,5138,109,61,65,"minigun+18",""],[90,0.99,29,744252,7443,9888,2120,5272,111,61,66,"minigun+18","queen 3"]]};
+// Colonnes : jour, marge, part joueur %, PV total, dps nécessaires, gain $, dps joueur, dps escouade, tireurs, snipers, lance-roquettes, arme, boss
+const SERIES = [
+  { key: 'actuel', name: 'Avant : prix fixes', color: 'var(--series-1)' },
+  { key: 'prix', name: 'Nouveaux prix seuls', color: 'var(--series-2)' },
+  { key: 'final', name: 'Nouveaux prix + corrections', color: 'var(--series-3)' },
+];
+const fmt = n => n.toLocaleString('fr-FR');
+const ARME = { sniper: 'Fusil de sniper', lourd: 'Sniper lourd', assaut: "Fusil d'assaut", minigun: 'Minigun' };
+const BOSS = { walker: 'Marcheur', worm: 'Ver', queen: 'Reine' };
+const weapon = s => { const [n, l] = s.split('+'); return `${ARME[n]} · niv. ${l}`; };
+const boss = s => { if (!s) return ''; const [t, r] = s.split(' '); return BOSS[t] + (r ? ' ' + ['', '', 'II', 'III', 'IV'][+r] : ''); };
+
+function lineChart(root, col, opts) {
+  // Le dessin suit la largeur réelle : le texte garde sa taille sur téléphone
+  const W = Math.max(320, Math.min(720, root.clientWidth - 28)), H = W < 520 ? 240 : 300;
+  const m = { l: 40, r: W < 520 ? 104 : 150, t: 12, b: 30 };
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const x = d => m.l + (d - 1) / 89 * iw;
+  const y = v => m.t + ih - (v - opts.min) / (opts.max - opts.min) * ih;
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', opts.label);
+  const el = (tag, attrs, parent = svg) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; };
+  for (const t of opts.ticks) {
+    el('line', { x1: m.l, x2: m.l + iw, y1: y(t), y2: y(t), stroke: 'var(--grid)', 'stroke-width': 1 });
+    const tx = el('text', { x: m.l - 8, y: y(t) + 4, 'text-anchor': 'end' }); tx.textContent = opts.tickFmt(t);
+  }
+  for (const d of W < 520 ? [1, 30, 60, 90] : [1, 10, 20, 30, 40, 50, 60, 70, 80, 90]) {
+    const tx = el('text', { x: x(d), y: H - 8, 'text-anchor': 'middle' }); tx.textContent = d === 1 ? 'Jour 1' : d;
+  }
+  if (opts.ref !== undefined) {
+    el('line', { x1: m.l, x2: m.l + iw, y1: y(opts.ref), y2: y(opts.ref), stroke: 'var(--bad)', 'stroke-width': 1.5, 'stroke-dasharray': '5 4' });
+    const t = el('text', { x: m.l + 6, y: y(opts.ref) - 6 }); t.textContent = opts.refLabel; t.style.fill = 'var(--bad)';
+  }
+  // Libellés directs en bout de ligne, écartés s'ils se chevauchent
+  const ends = SERIES.map(s => ({ s, v: DATA[s.key][89][col] })).sort((a, b) => y(a.v) - y(b.v));
+  let lastY = -99;
+  for (const e of ends) {
+    const yy = Math.max(y(e.v) + 4, lastY + 15); lastY = yy;
+    const t = el('text', { x: m.l + iw + 8, y: yy }); t.textContent = `${e.s.name.split(' :')[0].replace('Nouveaux prix + corrections', 'Appliqué').replace('Nouveaux prix seuls', 'Prix seuls')} ${opts.tickFmt(e.v)}`;
+    t.style.fill = 'var(--ink)';
+  }
+  for (const s of SERIES) {
+    const pts = DATA[s.key].map(r => `${x(r[0]).toFixed(1)},${y(Math.min(opts.max, r[col])).toFixed(1)}`).join(' ');
+    el('polyline', { points: pts, fill: 'none', stroke: s.color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
+  }
+  const cross = el('line', { y1: m.t, y2: m.t + ih, stroke: 'var(--muted)', 'stroke-width': 1, opacity: 0 });
+  const dots = SERIES.map(s => el('circle', { r: 4.5, fill: s.color, stroke: 'var(--panel)', 'stroke-width': 2, opacity: 0 }));
+  const hit = el('rect', { x: m.l, y: m.t, width: iw, height: ih, fill: 'transparent' });
+  root.insertBefore(svg, root.querySelector('.note'));
+  root.querySelector('.legend').innerHTML = SERIES.map(s => `<span><i style="background:${s.color}"></i>${s.name}</span>`).join('');
+  const tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true; root.appendChild(tip);
+  const move = ev => {
+    const r = svg.getBoundingClientRect();
+    const px = (ev.clientX - r.left) / r.width * W;
+    const d = Math.max(1, Math.min(90, Math.round((px - m.l) / iw * 89 + 1)));
+    cross.setAttribute('x1', x(d)); cross.setAttribute('x2', x(d)); cross.setAttribute('opacity', 1);
+    SERIES.forEach((s, i) => { const v = DATA[s.key][d - 1][col]; dots[i].setAttribute('cx', x(d)); dots[i].setAttribute('cy', y(Math.min(opts.max, v))); dots[i].setAttribute('opacity', 1); });
+    const b = DATA.final[d - 1][12];
+    tip.innerHTML = `<b>Jour ${d}${b ? ' · ' + boss(b) : ''}</b><br>` + SERIES.map(s => `<i style="background:${s.color}"></i>${s.name.replace('Avant : ', '')} : ${opts.tickFmt(DATA[s.key][d - 1][col])}`).join('<br>');
+    tip.hidden = false;
+    const cr = root.getBoundingClientRect();
+    let left = ev.clientX - cr.left + 14;
+    if (left + 230 > cr.width) left = ev.clientX - cr.left - 240;
+    tip.style.left = Math.max(4, left) + 'px'; tip.style.top = (ev.clientY - cr.top - 20) + 'px';
+  };
+  const leave = () => { tip.hidden = true; cross.setAttribute('opacity', 0); dots.forEach(d => d.setAttribute('opacity', 0)); };
+  hit.addEventListener('pointermove', move);
+  hit.addEventListener('pointerdown', move);
+  hit.addEventListener('pointerleave', leave);
+}
+
+lineChart(document.getElementById('chartMarge'), 1, {
+  min: 0, max: 5, ticks: [0, 1, 2, 3, 4, 5], tickFmt: v => v.toLocaleString('fr-FR', { maximumFractionDigits: 2 }),
+  ref: 1, refLabel: 'En dessous : on perd', label: 'Marge par jour pour les trois scénarios, du jour 1 au jour 90',
+});
+lineChart(document.getElementById('chartPart'), 2, {
+  min: 0, max: 100, ticks: [0, 25, 50, 75, 100], tickFmt: v => v + ' %', label: 'Part des dégâts faite par le joueur, du jour 1 au jour 90',
+});
+
+const KEY_DAYS = [1, 5, 7, 10, 15, 20, 25, 30, 35, 40, 50, 60, 70, 80, 90];
+document.getElementById('keyTable').innerHTML =
+  '<thead><tr><th>Jour</th><th>Vie à abattre</th><th>Dégâts/s requis</th><th>Argent du jour</th><th>Marge</th><th>Part joueur</th><th>Tireurs</th><th>Snipers</th><th>Roquettes</th><th>Arme</th></tr></thead><tbody>' +
+  KEY_DAYS.map(d => { const r = DATA.final[d - 1]; return `<tr><td>${d}${r[12] ? ' · ' + boss(r[12]) : ''}</td><td>${fmt(r[3])}</td><td>${fmt(r[4])}</td><td>${fmt(r[5])} $</td><td>${r[1].toLocaleString('fr-FR')}</td><td>${r[2]} %</td><td>${r[8]}</td><td>${r[9]}</td><td>${r[10]}</td><td class="txt">${weapon(r[11])}</td></tr>`; }).join('') + '</tbody>';
+document.getElementById('fullTable').innerHTML =
+  '<thead><tr><th>Jour</th><th>Marge avant</th><th>Marge prix seuls</th><th>Marge appliquée</th><th>Part joueur appliquée</th><th>Vie à abattre</th><th>Argent du jour</th></tr></thead><tbody>' +
+  DATA.final.map((r, i) => `<tr><td>${r[0]}${r[12] ? ' · ' + boss(r[12]) : ''}</td><td>${DATA.actuel[i][1].toLocaleString('fr-FR')}</td><td>${DATA.prix[i][1].toLocaleString('fr-FR')}</td><td>${r[1].toLocaleString('fr-FR')}</td><td>${r[2]} %</td><td>${fmt(r[3])}</td><td>${fmt(r[5])} $</td></tr>`).join('') + '</tbody>';
+</script>
