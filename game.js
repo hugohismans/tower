@@ -129,11 +129,13 @@ const WEAPONS = [
 ];
 
 const ALLY = {
-  mg:     { name: 'Mitrailleur', cost: 160, interval: 0.13, dmg: 6,  range: 300, acc: 0.7, desc: 'Arrose les ennemis proches du mur.' },
   sniper: { name: 'Sniper',      cost: 280, interval: 1.7,  dmg: 75, range: 2000, head: 0.3, desc: 'Tir lent et puissant, portée infinie.' },
   rocket: { name: 'Lance-roquettes', cost: 750, interval: 3.0, dmg: 150, range: 420, splash: 45, unlock: 5,
             desc: 'Dégâts de zone. Idéal contre les groupes et les tanks.' },
 };
+
+// Tireurs cachés dans la maison : prix fixe, nombre illimité
+const SHOOTER = { cost: 80, interval: 5, dmg: 25 };
 
 const WALL_NAMES = ['Palissade', 'Mur de briques', 'Mur de pierre', 'Rempart', 'Béton', 'Béton armé'];
 const wallMax = lvl => 220 + lvl * 240;
@@ -153,7 +155,7 @@ function makeState(mode) {
     mode, day: 0, money: 0, kills: 0, t: 0,
     wall: { lvl: 0, hp: wallMax(0) }, bld: { floors: 1, hp: bldMax(1) },
     w: { tier: 0, dmg: 0, rate: 0, reload: 0, ammo: WEAPONS[0].mag, reloading: 0, cd: 0 },
-    allies: [], enemies: [], proj: [], fx: [], texts: [], corpses: [],
+    allies: [], shooters: [], enemies: [], proj: [], fx: [], texts: [], corpses: [],
     queue: [], total: 0, dayT: 0, dayLen: 1, dayKills: 0, dayMoney: 0, endTimer: 0,
     banner: null, shake: 0, kick: 0, dyingT: 0, demoT: 0,
   };
@@ -446,11 +448,7 @@ function updateAlly(a, i, dt) {
   const w = allyPos(i), m = P3(w.x - 10, w.y, w.z);
   a.cd = def.interval; a.flash = 0.06;
   const g = geom(target);
-  if (a.type === 'mg') {
-    const tx = rand(g.x0, g.x1), ty = rand(g.y0, g.y1);
-    if (Math.random() < def.acc) hit(target, def.dmg, false, tx, ty);
-    tracer(m.x, m.y, tx + rand(-8, 8), ty + rand(-6, 6), 0.05, 1);
-  } else if (a.type === 'sniper') {
+  if (a.type === 'sniper') {
     const head = g.hr > 0 && Math.random() < def.head;
     const tx = head ? g.hx : (g.x0 + g.x1) / 2, ty = head ? g.hy : (g.y0 * 0.4 + g.y1 * 0.6);
     hit(target, def.dmg * (head ? 2.5 : 1), head, tx, ty);
@@ -461,6 +459,30 @@ function updateAlly(a, i, dt) {
     const dist = Math.hypot(tx - w.x, w.y, target.z - w.z);
     S.proj.push({ kind: 'ally', x0: w.x - 10, y0: w.y, z0: w.z, x1: tx, y1: 0, z1: target.z, t: 0, dur: dist / 330, arc: 18, dmg: def.dmg, splash: def.splash });
     sfx('launch');
+  }
+}
+
+// Chaque tireur tire une balle toutes les 5 s sur un ennemi visible, et touche toujours
+let lastShooterSfx = 0;
+function updateShooters(dt) {
+  if (!S.shooters.length) return;
+  const targets = S.enemies.filter(e => !e.dead && !e.demo && e.x > visLeftX(e.z) + 5);
+  for (let i = 0; i < S.shooters.length; i++) {
+    S.shooters[i] -= dt;
+    if (S.shooters[i] > 0) continue;
+    if (!targets.length) { S.shooters[i] = 0.3; continue; }
+    S.shooters[i] = SHOOTER.interval;
+    const e = targets[Math.random() * targets.length | 0];
+    if (e.dead) continue;
+    const g = geom(e);
+    const tx = rand(g.x0 + (g.x1 - g.x0) * 0.25, g.x1 - (g.x1 - g.x0) * 0.25), ty = rand(g.y0 + (g.y1 - g.y0) * 0.2, g.y1 - (g.y1 - g.y0) * 0.3);
+    // Le coup part d'une fenêtre au hasard : on voit l'éclair, pas le tireur
+    const floor = Math.random() * S.bld.floors | 0;
+    const m = P3(BX0 - 1, floor * FH + 18, Math.random() < 0.5 ? ALLY_Z : DECO_Z);
+    S.fx.push({ kind: 'flash', x: m.x, y: m.y, t: 0, life: 0.08, r: 2.6 * m.k * 0.6 });
+    tracer(m.x, m.y, tx, ty, 0.07, 1.1);
+    hit(e, SHOOTER.dmg, false, tx, ty);
+    if (S.t - lastShooterSfx > 0.12) { sfx('ally'); lastShooterSfx = S.t; }
   }
 }
 
@@ -569,6 +591,7 @@ function update(dt) {
 
   for (const e of S.enemies) if (!e.dead) updateEnemy(e, dt);
   S.allies.forEach((a, i) => updateAlly(a, i, dt));
+  updateShooters(dt);
   for (const p of S.proj) if (!p.dead) updateProj(p, dt);
   S.enemies = S.enemies.filter(e => !e.dead);
   S.proj = S.proj.filter(p => !p.dead);
@@ -1156,6 +1179,9 @@ function drawFx() {
     } else if (f.kind === 'tracer') {
       ctx.globalAlpha = k; ctx.strokeStyle = PAL.tracer; ctx.lineWidth = f.w;
       ctx.beginPath(); ctx.moveTo(f.x1, f.y1); ctx.lineTo(f.x2, f.y2); ctx.stroke();
+    } else if (f.kind === 'flash') {
+      ctx.globalAlpha = k; ctx.fillStyle = PAL.flash;
+      ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2); ctx.fill();
     } else if (f.kind === 'ring') {
       ctx.globalAlpha = k; ctx.strokeStyle = PAL.flash; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (1.4 - k * 0.6), 0, Math.PI * 2); ctx.stroke();
@@ -1272,12 +1298,18 @@ const SHOP = [
       cost: () => Math.round(320 * Math.pow(1.85, S.bld.floors - 1)), lock: () => S.bld.floors >= MAX_FLOORS ? 'Max' : null,
       buy: () => { S.bld.floors++; S.bld.hp += 300; } },
   ] },
-  { group: 'Tireurs', items: Object.entries(ALLY).map(([type, a]) => ({
+  { group: 'Tireurs', items: [
+    { id: 'shooter', name: () => 'Tireur', multi: 10,
+      desc: () => `Caché dans la maison, il tire une balle toutes les 5 s et touche à chaque fois. Achète-en autant que tu veux. ${S.shooters.length} en poste.`,
+      cost: () => SHOOTER.cost, lock: () => null,
+      buy: () => { S.shooters.push(rand(0, SHOOTER.interval)); } },
+    ...Object.entries(ALLY).map(([type, a]) => ({
     id: 'ally-' + type, name: () => a.name,
     desc: () => `${a.desc} ${S.allies.filter(x => x.type === type).length} en poste.`,
     cost: () => a.cost,
     lock: () => a.unlock && S.day < a.unlock ? `Dès la nuit ${a.unlock}` : !freeFloor() ? 'Construis un étage' : null,
-    buy: () => { S.allies.push({ type, cd: 0.5, flash: 0 }); } })) },
+    buy: () => { S.allies.push({ type, cd: 0.5, flash: 0 }); } })),
+  ] },
   { group: 'Ton arme', items: [
     { id: 'dmg', name: () => `Dégâts (niv. ${S.w.dmg}/10)`, desc: () => '+22 % de dégâts par balle.',
       cost: () => Math.round(90 * Math.pow(1.55, S.w.dmg)), lock: () => S.w.dmg >= 10 ? 'Max' : null, buy: () => { S.w.dmg++; } },
@@ -1306,7 +1338,7 @@ function renderShop() {
       const affordable = it.partial ? S.money > 0 : S.money >= cost;
       const card = document.createElement('div');
       card.className = 'card' + (lock ? ' locked' : '');
-      card.innerHTML = `<div class="name"></div><div class="desc"></div><button id="buy-${it.id}"></button>`;
+      card.innerHTML = `<div class="name"></div><div class="desc"></div><div class="buy-row"><button id="buy-${it.id}"></button></div>`;
       card.querySelector('.name').textContent = it.name();
       card.querySelector('.desc').textContent = it.desc();
       const btn = card.querySelector('button');
@@ -1320,6 +1352,20 @@ function renderShop() {
         sfx('cash');
         renderShop();
       });
+      if (it.multi) {
+        const n = it.multi, b2 = document.createElement('button');
+        b2.id = `buy-${it.id}-x${n}`;
+        b2.textContent = `×${n} : ${cost * n} $`;
+        b2.disabled = S.money < cost * n;
+        b2.addEventListener('click', () => {
+          if (S.money < it.cost() * n) return;
+          S.money -= it.cost() * n;
+          for (let i = 0; i < n; i++) it.buy();
+          sfx('cash');
+          renderShop();
+        });
+        card.querySelector('.buy-row').appendChild(b2);
+      }
       cards.appendChild(card);
     }
     sec.appendChild(cards);
