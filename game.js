@@ -330,6 +330,11 @@ function startDay() {
     enemies: [], proj: [], corpses: [],
   });
   S.w.ammo = weaponStats().mag; S.w.reloading = 0; S.w.cd = 0;
+  // Tirs étalés : avec 7 lance-roquettes (7 s), une roquette par seconde
+  for (const [type, def] of Object.entries(SQUADS)) {
+    const cds = S.squads[type];
+    cds.forEach((_, i) => { cds[i] = (i + 0.5) / cds.length * def.interval + rand(-0.1, 0.1); });
+  }
   let sub = DAY_NEWS[d] || 'Ils sont toujours plus nombreux.';
   if (boss) {
     const name = ENEMY[boss.type].name + roman(boss.rank);
@@ -908,7 +913,8 @@ function updateSquads(dt) {
     for (let i = 0; i < cds.length; i++) {
       cds[i] -= dt;
       if (cds[i] > 0) continue;
-      if (!targets.length) { cds[i] = 0.3; continue; }
+      // Pas de cible : on saute un tour sans perdre le décalage entre tireurs
+      if (!targets.length) { cds[i] += def.interval; continue; }
       cds[i] = def.interval;
       squadShot(type, def);
     }
@@ -1581,11 +1587,6 @@ function drawTank(e, x, z, burnt) {
     const a = roll * Math.PI * 2; ctx.beginPath(); ctx.moveTo(w.x, w.y); ctx.lineTo(w.x + Math.cos(a) * r, w.y + Math.sin(a) * r); ctx.stroke();
   }
   if (e && e.muzzle > 0) { ctx.fillStyle = PAL.flash; ctx.beginPath(); ctx.arc(b1.x + 4, b1.y, 9 * b0.k * 0.5, 0, Math.PI * 2); ctx.fill(); }
-  if (burnt) {
-    const a = P3(x - 32, 0, z - 14), b = P3(x + 34, 26, z - 14), top = P3(x, 26, z + 14);
-    ctx.fillStyle = 'rgba(30,25,20,0.45)';
-    ctx.fillRect(a.x, top.y, b.x - a.x, a.y - top.y);
-  }
 }
 
 function drawShadow(x, z, w) {
