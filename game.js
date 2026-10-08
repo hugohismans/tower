@@ -128,14 +128,16 @@ const WEAPONS = [
     desc: 'Le dernier recours. 25 balles par seconde.' },
 ];
 
-const ALLY = {
-  sniper: { name: 'Sniper',      cost: 280, interval: 1.7,  dmg: 75, range: 2000, head: 0.3, desc: 'Tir lent et puissant, portée infinie.' },
-  rocket: { name: 'Lance-roquettes', cost: 750, interval: 3.0, dmg: 150, range: 420, splash: 45, unlock: 5,
-            desc: 'Dégâts de zone. Idéal contre les groupes et les tanks.' },
+// Tireurs cachés dans la maison : nombre illimité, prix fixe.
+// Chaque type est débloqué par un étage et tire depuis cet étage.
+const SQUADS = {
+  shooter: { name: 'Tireur', floor: 1, cost: 80, interval: 5, dmg: 25,
+             desc: 'Tire une balle toutes les 5 s et touche à chaque fois.' },
+  sniper:  { name: 'Sniper', floor: 2, cost: 250, interval: 5, dmg: 80, head: 0.35,
+             desc: 'Un tireur bien plus puissant, qui vise souvent la tête.' },
+  rocket:  { name: 'Lance-roquettes', floor: 3, cost: 600, interval: 7, dmg: 160, splash: 45,
+             desc: 'Une roquette toutes les 7 s, dégâts de zone. Vise les groupes et les tanks.' },
 };
-
-// Tireurs cachés dans la maison : prix fixe, nombre illimité
-const SHOOTER = { cost: 80, interval: 5, dmg: 25 };
 
 const WALL_NAMES = ['Palissade', 'Mur de briques', 'Mur de pierre', 'Rempart', 'Béton', 'Béton armé'];
 const wallMax = lvl => 220 + lvl * 240;
@@ -155,7 +157,7 @@ function makeState(mode) {
     mode, day: 0, money: 0, kills: 0, t: 0,
     wall: { lvl: 0, hp: wallMax(0) }, bld: { floors: 1, hp: bldMax(1) },
     w: { tier: 0, dmg: 0, rate: 0, reload: 0, ammo: WEAPONS[0].mag, reloading: 0, cd: 0 },
-    allies: [], shooters: [], enemies: [], proj: [], fx: [], texts: [], corpses: [],
+    squads: { shooter: [], sniper: [], rocket: [] }, enemies: [], proj: [], fx: [], texts: [], corpses: [],
     queue: [], total: 0, dayT: 0, dayLen: 1, dayKills: 0, dayMoney: 0, endTimer: 0,
     banner: null, shake: 0, kick: 0, dyingT: 0, demoT: 0,
   };
@@ -444,58 +446,54 @@ function fire(px, py) {
 }
 
 // ---------------------------------------------------------------------------
-// Alliés aux fenêtres
+// Tireurs cachés : on voit l'éclair à la fenêtre de leur étage, pas le tireur
 // ---------------------------------------------------------------------------
-const allyPos = i => ({ x: BX0 - 1, y: i * FH + 16, z: ALLY_Z });
-
-function updateAlly(a, i, dt) {
-  const def = ALLY[a.type];
-  a.cd -= dt; a.flash = Math.max(0, a.flash - dt);
-  if (a.cd > 0) return;
-  let target = null;
-  for (const e of S.enemies) {
-    if (e.dead || e.demo || e.x < visLeftX(e.z) || BX0 - e.x > def.range) continue;
-    if (!target || e.x > target.x) target = e;
-  }
-  if (!target) { a.cd = 0.2; return; }
-  const w = allyPos(i), m = P3(w.x - 10, w.y, w.z);
-  a.cd = def.interval; a.flash = 0.06;
-  const g = geom(target);
-  if (a.type === 'sniper') {
-    const head = g.hr > 0 && Math.random() < def.head;
-    const tx = head ? g.hx : (g.x0 + g.x1) / 2, ty = head ? g.hy : (g.y0 * 0.4 + g.y1 * 0.6);
-    hit(target, def.dmg * (head ? 2.5 : 1), head, tx, ty);
-    tracer(m.x, m.y, tx, ty, 0.12, 1.6);
-    sfx('ally');
-  } else {
-    const tx = target.x + target.def.speed * 0.4;
-    const dist = Math.hypot(tx - w.x, w.y, target.z - w.z);
-    S.proj.push({ kind: 'ally', x0: w.x - 10, y0: w.y, z0: w.z, x1: tx, y1: 0, z1: target.z, t: 0, dur: dist / 330, arc: 18, dmg: def.dmg, splash: def.splash });
-    sfx('launch');
-  }
+let lastSquadSfx = 0;
+function windowAt(floor) {
+  return P3(BX0 - 1, floor * FH + 18, Math.random() < 0.5 ? ALLY_Z : DECO_Z);
 }
 
-// Chaque tireur tire une balle toutes les 5 s sur un ennemi visible, et touche toujours
-let lastShooterSfx = 0;
-function updateShooters(dt) {
-  if (!S.shooters.length) return;
+function updateSquads(dt) {
   const targets = S.enemies.filter(e => !e.dead && !e.demo && e.x > visLeftX(e.z) + 5);
-  for (let i = 0; i < S.shooters.length; i++) {
-    S.shooters[i] -= dt;
-    if (S.shooters[i] > 0) continue;
-    if (!targets.length) { S.shooters[i] = 0.3; continue; }
-    S.shooters[i] = SHOOTER.interval;
-    const e = targets[Math.random() * targets.length | 0];
-    if (e.dead) continue;
+  for (const [type, def] of Object.entries(SQUADS)) {
+    const cds = S.squads[type];
+    for (let i = 0; i < cds.length; i++) {
+      cds[i] -= dt;
+      if (cds[i] > 0) continue;
+      if (!targets.length) { cds[i] = 0.3; continue; }
+      cds[i] = def.interval;
+      squadShot(type, def);
+    }
+  }
+
+  function squadShot(type, def) {
+    const live = targets.filter(e => !e.dead);
+    if (!live.length) return;
+    const m = windowAt(def.floor - 1);
+    if (type === 'rocket') {
+      // Vise l'ennemi qui a le plus de voisins (ou un gros morceau comme un tank)
+      let best = null, score = -1;
+      for (const e of live) {
+        let sc = e.hp / 400;
+        for (const o of live) if (Math.hypot(o.x - e.x, (o.z - e.z) * 0.6) < def.splash) sc++;
+        if (sc > score) { score = sc; best = e; }
+      }
+      const tx = best.x + (best.attacking ? 0 : best.def.speed * 0.5);
+      const y0 = (def.floor - 1) * FH + 18, dist = Math.hypot(tx - BX0, y0, best.z - ALLY_Z);
+      S.proj.push({ kind: 'ally', x0: BX0 - 4, y0, z0: ALLY_Z, x1: tx, y1: 0, z1: best.z, t: 0, dur: dist / 330, arc: 18, dmg: def.dmg, splash: def.splash });
+      S.fx.push({ kind: 'flash', x: m.x, y: m.y, t: 0, life: 0.15, r: 5 * m.k * 0.6 });
+      sfx('launch');
+      return;
+    }
+    const e = live[Math.random() * live.length | 0];
     const g = geom(e);
-    const tx = rand(g.x0 + (g.x1 - g.x0) * 0.25, g.x1 - (g.x1 - g.x0) * 0.25), ty = rand(g.y0 + (g.y1 - g.y0) * 0.2, g.y1 - (g.y1 - g.y0) * 0.3);
-    // Le coup part d'une fenêtre au hasard : on voit l'éclair, pas le tireur
-    const floor = Math.random() * S.bld.floors | 0;
-    const m = P3(BX0 - 1, floor * FH + 18, Math.random() < 0.5 ? ALLY_Z : DECO_Z);
-    S.fx.push({ kind: 'flash', x: m.x, y: m.y, t: 0, life: 0.08, r: 2.6 * m.k * 0.6 });
-    tracer(m.x, m.y, tx, ty, 0.07, 1.1);
-    hit(e, SHOOTER.dmg, false, tx, ty);
-    if (S.t - lastShooterSfx > 0.12) { sfx('ally'); lastShooterSfx = S.t; }
+    const head = type === 'sniper' && g.hr > 0 && Math.random() < def.head;
+    const tx = head ? g.hx : rand(g.x0 + (g.x1 - g.x0) * 0.25, g.x1 - (g.x1 - g.x0) * 0.25);
+    const ty = head ? g.hy : rand(g.y0 + (g.y1 - g.y0) * 0.2, g.y1 - (g.y1 - g.y0) * 0.3);
+    S.fx.push({ kind: 'flash', x: m.x, y: m.y, t: 0, life: 0.08, r: (type === 'sniper' ? 3.6 : 2.6) * m.k * 0.6 });
+    tracer(m.x, m.y, tx, ty, type === 'sniper' ? 0.14 : 0.07, type === 'sniper' ? 1.8 : 1.1);
+    hit(e, def.dmg * (head ? 2.5 : 1), head, tx, ty);
+    if (S.t - lastSquadSfx > 0.12) { sfx('ally'); lastSquadSfx = S.t; }
   }
 }
 
@@ -603,8 +601,7 @@ function update(dt) {
   if (ws.auto && pointer.down && w.cd <= 0) fire(pointer.x, pointer.y);
 
   for (const e of S.enemies) if (!e.dead) updateEnemy(e, dt);
-  S.allies.forEach((a, i) => updateAlly(a, i, dt));
-  updateShooters(dt);
+  updateSquads(dt);
   for (const p of S.proj) if (!p.dead) updateProj(p, dt);
   S.enemies = S.enemies.filter(e => !e.dead);
   S.proj = S.proj.filter(p => !p.dead);
@@ -899,7 +896,6 @@ function drawBuilding() {
     CRACKS[i * 2 + k].forEach(([z, y], j) => { const p = P3(BX0, i * FH + FH - y, z); j ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); });
     ctx.stroke();
   }
-  S.allies.forEach((a, i) => drawAlly(a, i));
   const top = P3(BX0, h + 14, (BZ0 + BZ1) / 2);
   hpBar(top.x - 20, Math.max(62, top.y - 10), 120, ratio);
 }
@@ -912,19 +908,6 @@ function windowQuad(pts, deco) {
     ctx.moveTo((p[0].x + p[1].x) / 2, (p[0].y + p[1].y) / 2); ctx.lineTo((p[2].x + p[3].x) / 2, (p[2].y + p[3].y) / 2);
     ctx.stroke();
   }
-}
-
-function drawAlly(a, i) {
-  const w = allyPos(i);
-  const head = P3(w.x + 2, w.y + 7, w.z), k = head.k * 0.6;
-  ctx.fillStyle = PAL.paper ? INK_DARK : '#e9c9a0';
-  ctx.beginPath(); ctx.arc(head.x, head.y, 3.2 * k, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = PAL.ally; ctx.beginPath(); ctx.arc(head.x, head.y - 0.6 * k, 3.6 * k, Math.PI, 0); ctx.fill();
-  const g0 = P3(w.x + 2, w.y + 3, w.z), g1 = P3(w.x - (a.type === 'sniper' ? 14 : a.type === 'rocket' ? 9 : 10), w.y + (a.type === 'rocket' ? 5 : 3), w.z);
-  ctx.strokeStyle = a.type === 'rocket' ? PAL.allyRocket === PAPER_BG ? INK : PAL.allyRocket : PAL.gun;
-  ctx.lineWidth = (a.type === 'rocket' ? 3.2 : a.type === 'mg' ? 2.2 : 1.6) * k;
-  ctx.beginPath(); ctx.moveTo(g0.x, g0.y); ctx.lineTo(g1.x, g1.y); ctx.stroke();
-  if (a.flash > 0) { ctx.fillStyle = PAL.flash; ctx.beginPath(); ctx.arc(g1.x, g1.y, 3.5 * k, 0, Math.PI * 2); ctx.fill(); }
 }
 
 function hpBar(x, y, w, ratio) {
@@ -1288,8 +1271,6 @@ function updateHud() {
 // ---------------------------------------------------------------------------
 // Boutique de nuit
 // ---------------------------------------------------------------------------
-const freeFloor = () => S.allies.length < S.bld.floors;
-
 const SHOP = [
   { group: 'Bâtiment', items: [
     { id: 'repairWall', name: () => S.wall.hp <= 0 ? 'Reconstruire le mur' : 'Réparer le mur',
@@ -1307,21 +1288,17 @@ const SHOP = [
       lock: () => S.bld.hp >= bldMax(S.bld.floors) ? 'Intact' : null, partial: true,
       buy: spent => { S.bld.hp = Math.min(bldMax(S.bld.floors), S.bld.hp + spent / 0.55); } },
     { id: 'floor', name: () => S.bld.floors >= MAX_FLOORS ? '5 étages, maximum' : `Construire l'étage ${S.bld.floors + 1}`,
-      desc: () => '+300 PV et une fenêtre de plus pour un tireur.',
+      desc: () => ({ 1: '+300 PV. Débloque les snipers.', 2: '+300 PV. Débloque les lance-roquettes.' })[S.bld.floors] || '+300 PV.',
       cost: () => Math.round(320 * Math.pow(1.85, S.bld.floors - 1)), lock: () => S.bld.floors >= MAX_FLOORS ? 'Max' : null,
       buy: () => { S.bld.floors++; S.bld.hp += 300; } },
   ] },
   { group: 'Tireurs', items: [
-    { id: 'shooter', name: () => 'Tireur', multi: 10,
-      desc: () => `Caché dans la maison, il tire une balle toutes les 5 s et touche à chaque fois. Achète-en autant que tu veux. ${S.shooters.length} en poste.`,
-      cost: () => SHOOTER.cost, lock: () => null,
-      buy: () => { S.shooters.push(rand(0, SHOOTER.interval)); } },
-    ...Object.entries(ALLY).map(([type, a]) => ({
-    id: 'ally-' + type, name: () => a.name,
-    desc: () => `${a.desc} ${S.allies.filter(x => x.type === type).length} en poste.`,
-    cost: () => a.cost,
-    lock: () => a.unlock && S.day < a.unlock ? `Dès la nuit ${a.unlock}` : !freeFloor() ? 'Construis un étage' : null,
-    buy: () => { S.allies.push({ type, cd: 0.5, flash: 0 }); } })),
+    ...Object.entries(SQUADS).map(([type, d]) => ({
+      id: type, name: () => d.name, multi: 10,
+      desc: () => `Étage ${d.floor}. ${d.desc} Caché, illimité. ${S.squads[type].length} en poste.`,
+      cost: () => d.cost,
+      lock: () => S.bld.floors < d.floor ? `Il faut ${d.floor} étages` : null,
+      buy: () => { S.squads[type].push(rand(0, d.interval)); } })),
   ] },
   { group: 'Ton arme', items: [
     { id: 'dmg', name: () => `Dégâts (niv. ${S.w.dmg}/10)`, desc: () => '+22 % de dégâts par balle.',
@@ -1365,7 +1342,7 @@ function renderShop() {
         sfx('cash');
         renderShop();
       });
-      if (it.multi) {
+      if (it.multi && !lock) {
         const n = it.multi, b2 = document.createElement('button');
         b2.id = `buy-${it.id}-x${n}`;
         b2.textContent = `×${n} : ${cost * n} $`;

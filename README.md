@@ -46,8 +46,13 @@ Les PV augmentent de 7 % par jour, le nombre d'ennemis aussi.
 
 - **Bâtiment** : réparer le mur, renforcer le mur (Palissade → Béton armé, 6 niveaux),
   réparer le bâtiment, construire des étages (1 à 5, +300 PV chacun).
-- **Tireurs** : cachés dans la maison, 80 $ chacun, nombre illimité (achat par 1 ou par 10).
-  Chacun tire une balle toutes les 5 s (25 dégâts) et touche toujours.
-- **Aux fenêtres** : un par étage. Sniper (280 $), Lance-roquettes (750 $, dès la nuit 5).
+- **Tireurs** : tous cachés dans la maison, nombre illimité, prix fixe (achat par 1 ou par 10).
+  Chaque type est débloqué par un étage et tire depuis cet étage.
+
+  | Type | Étage requis | Prix | Tir |
+  |---|---|---|---|
+  | Tireur | 1 | 80 $ | 1 balle / 5 s, 25 dégâts, touche toujours |
+  | Sniper | 2 | 250 $ | 1 balle / 5 s, 80 dégâts, 35 % de tirs à la tête (×2,5) |
+  | Lance-roquettes | 3 | 600 $ | 1 roquette / 7 s, 160 dégâts de zone, vise les groupes et les tanks |
 - **Ton arme** : dégâts, cadence, rechargement, et évolution
   Fusil de sniper → Sniper lourd (traverse 3 ennemis) → Fusil d'assaut → Minigun.
