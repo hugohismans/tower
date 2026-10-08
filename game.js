@@ -1078,6 +1078,10 @@ let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
+  // Après une rotation, certains navigateurs (iPhone) annoncent la nouvelle taille en retard :
+  // on vérifie à chaque image que le dessin a bien la taille affichée.
+  const ndpr = Math.min(window.devicePixelRatio || 1, 2);
+  if (canvas.width !== Math.round(canvas.clientWidth * ndpr) || canvas.height !== Math.round(canvas.clientHeight * ndpr)) resize();
   if (S.mode !== 'paused') update(dt);
   render();
   updateHud();
@@ -2228,6 +2232,7 @@ window.addEventListener('keydown', ev => {
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden) { setPaused(true); saveGame(); } });
 window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 250));
 if (location.hash === '#debug') window.sniper = { state: () => S, endDay, startDay, newGame, geom, P3, spawn, hit };
 
 function showBest() {
