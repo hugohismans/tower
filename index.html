@@ -80,6 +80,7 @@ body.paper .chip { box-shadow: none; border-width: 2px; border-radius: 255px 14p
 .hud-day { font: 1.25rem/1 var(--f-display); }
 .sunbar { width: 120px; height: 7px; border: 2px solid var(--ink); border-radius: 6px; margin-top: 5px; overflow: hidden; background: var(--panel-2); }
 .sunbar i { display: block; height: 100%; width: 0; background: var(--accent); }
+.hud-cycle { font-size: 0.75rem; font-weight: 600; color: var(--muted); margin-top: 4px; max-width: 220px; line-height: 1.15; }
 .hud-money { font: 700 1.35rem/1 var(--f-body); color: var(--gold); font-variant-numeric: tabular-nums; }
 .hud-btns { display: flex; gap: 8px; }
 .hud-btns button { padding: 0.35em 0.7em; font-size: 0.95rem; }
@@ -160,6 +161,7 @@ body.paper .sheet h2 { font-size: 2.3rem; color: var(--accent); }
   <div class="chip">
     <div class="hud-day" id="hudDay">Jour 1</div>
     <div class="sunbar" aria-hidden="true"><i id="hudSun"></i></div>
+    <div class="hud-cycle" id="hudCycle"></div>
   </div>
   <div class="hud-money chip" id="hudMoney">0 $</div>
   <div class="hud-btns">
