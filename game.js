@@ -340,6 +340,7 @@ function startDay() {
   S.banner = { title: `Jour ${d}`, sub, t: 0 };
   hideAll();
   $('hud').hidden = false; $('weapon').hidden = false;
+  saveGame();
 }
 
 function endDay() {
@@ -348,15 +349,64 @@ function endDay() {
   const bonus = 40 + S.day * 15;
   S.money += bonus;
   if (!S.test && S.day > best) { best = S.day; try { localStorage.setItem('sniper.best', best); } catch (e) { /* ignore */ } }
+  S.recap = `Jour ${S.day} tenu. ${S.dayKills} ennemis abattus, ${S.dayMoney} $ gagnés, prime de nuit +${bonus} $.`;
+  openShop();
+}
+
+function openShop() {
   $('shopTitle').textContent = `Nuit ${S.day}`;
-  $('shopRecap').textContent = `Jour ${S.day} tenu. ${S.dayKills} ennemis abattus, ${S.dayMoney} $ gagnés, prime de nuit +${bonus} $.`;
+  $('shopRecap').textContent = S.recap || '';
   $('btnNext').textContent = `Commencer le jour ${S.day + 1}`;
   renderShop();
   $('shopWrap').hidden = false;
 }
 
+// ---------------------------------------------------------------------------
+// Sauvegarde de la partie en cours (navigateur). Reprise au même moment,
+// en pause si c'était en plein jour.
+// ---------------------------------------------------------------------------
+const SAVE_KEY = 'sniper.save';
+let lastSave = 0;
+
+function saveGame() {
+  if (!['day', 'paused', 'night'].includes(S.mode)) return;
+  lastSave = S.t;
+  try {
+    const data = {
+      ...S, v: 1, mode: S.mode === 'paused' ? 'day' : S.mode, money: S.money === Infinity ? 'inf' : S.money,
+      enemies: S.enemies.filter(e => !e.dead && !e.demo).map(e => ({ ...e, def: undefined })),
+      proj: S.proj.filter(p => !p.dead), fx: [], texts: [], corpses: [], banner: null,
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  } catch (e) { /* stockage indisponible : on joue sans sauvegarde */ }
+}
+
+function loadSave() {
+  try {
+    const d = JSON.parse(localStorage.getItem(SAVE_KEY));
+    return d && d.v === 1 && d.day > 0 ? d : null;
+  } catch (e) { return null; }
+}
+
+function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* ignore */ } }
+
+function resumeGame() {
+  const d = loadSave();
+  if (!d) { toTitle(); return; }
+  S = Object.assign(makeState('day'), d);
+  if (S.money === 'inf') S.money = Infinity;
+  S.enemies = S.enemies.filter(e => ENEMY[e.type]);
+  S.enemies.forEach(e => { e.def = ENEMY[e.type]; e.mods = e.mods || []; });
+  hudCache = '';
+  hideAll();
+  $('hud').hidden = false; $('weapon').hidden = false; $('btnSkip').hidden = !S.test;
+  if (S.mode === 'night') openShop();
+  else { S.mode = 'paused'; $('pause').hidden = false; }
+}
+
 function gameOver() {
   S.mode = 'over';
+  clearSave();
   pointer.down = false;
   const held = S.day - 1, rec = S.test ? best : Math.max(best, held);
   $('overText').textContent = `Tu as tenu ${held} jour${held > 1 ? 's' : ''} et abattu ${S.kills} ennemis. Record : ${rec} jour${rec > 1 ? 's' : ''}.`;
@@ -1012,6 +1062,8 @@ function update(dt) {
     const p = P3(rand(BX0 + 10, BX1 - 10), bldH(), rand(BZ0 + 10, BZ1 - 10));
     particle(p.x, p.y, rand(-8, 8), rand(-40, -20), `rgba(${PAL.smoke.join(',')},0.3)`, 1.6, rand(4, 8), 9999, -10);
   }
+
+  if (S.t - lastSave > 3) saveGame();
 
   if (!S.queue.length && !S.enemies.length && S.mode === 'day') {
     S.endTimer += dt;
@@ -2039,6 +2091,7 @@ function renderShop() {
         else { if (S.money < c) return; S.money -= c; it.buy(); }
         sfx('cash');
         renderShop();
+        saveGame();
       });
       if (it.multi && !lock) {
         const n = it.multi, b2 = document.createElement('button');
@@ -2051,6 +2104,7 @@ function renderShop() {
           for (let i = 0; i < n; i++) it.buy();
           sfx('cash');
           renderShop();
+          saveGame();
         });
         card.querySelector('.buy-row').appendChild(b2);
       }
@@ -2132,7 +2186,7 @@ canvas.addEventListener('pointerleave', ev => { if (ev.pointerType === 'mouse') 
 canvas.addEventListener('contextmenu', ev => ev.preventDefault());
 
 function setPaused(on) {
-  if (on && S.mode === 'day') { S.mode = 'paused'; pointer.down = false; $('pause').hidden = false; }
+  if (on && S.mode === 'day') { S.mode = 'paused'; pointer.down = false; $('pause').hidden = false; saveGame(); }
   else if (!on && S.mode === 'paused') { S.mode = 'day'; $('pause').hidden = true; last = performance.now(); }
 }
 
@@ -2152,6 +2206,9 @@ $('btnNext').addEventListener('click', () => { ensureAudio(); startDay(); });
 $('btnPause').addEventListener('click', () => setPaused(S.mode === 'day'));
 $('btnResume').addEventListener('click', () => setPaused(false));
 $('btnQuit').addEventListener('click', () => { S.mode = 'over'; $('pause').hidden = true; gameOver(); });
+$('btnSaveQuit').addEventListener('click', () => { saveGame(); toTitle(); });
+$('btnContinue').addEventListener('click', () => { ensureAudio(); resumeGame(); });
+window.addEventListener('pagehide', saveGame);
 $('weapon').addEventListener('click', () => { if (S.mode === 'day') startReload(); });
 $('btnRotateOk').addEventListener('click', () => $('rotate').classList.add('dismissed'));
 function syncSound() { $('btnSound').textContent = muted ? 'Son : non' : 'Son : oui'; $('btnSound').setAttribute('aria-pressed', String(!muted)); }
@@ -2163,11 +2220,18 @@ window.addEventListener('keydown', ev => {
   if (ev.key === 'r' || ev.key === 'R') { if (S.mode === 'day') startReload(); }
   else if (ev.key === 'p' || ev.key === 'Escape') setPaused(S.mode === 'day');
 });
-document.addEventListener('visibilitychange', () => { if (document.hidden) setPaused(true); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { setPaused(true); saveGame(); } });
 window.addEventListener('resize', resize);
 if (location.hash === '#debug') window.sniper = { state: () => S, endDay, startDay, newGame, geom, P3, spawn, hit };
 
-function showBest() { $('best').textContent = best > 0 ? `Record : ${best} jour${best > 1 ? 's' : ''} tenu${best > 1 ? 's' : ''}` : ''; }
+function showBest() {
+  $('best').textContent = best > 0 ? `Record : ${best} jour${best > 1 ? 's' : ''} tenu${best > 1 ? 's' : ''}` : '';
+  const save = loadSave();
+  $('btnContinue').hidden = !save;
+  if (save) $('btnContinue').textContent = `Continuer · ${save.mode === 'night' ? 'Nuit' : 'Jour'} ${save.day}${save.money === 'inf' ? ' (test)' : ''}`;
+  $('btnPlay').textContent = save ? 'Nouvelle partie' : 'Jouer';
+  $('btnPlay').classList.toggle('primary', !save);
+}
 setStyle(style);
 syncSound();
 showBest();

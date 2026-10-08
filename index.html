@@ -192,10 +192,11 @@ body.paper .sheet h2 { font-size: 2.3rem; color: var(--accent); }
     </div>
     <p class="best" id="best"></p>
     <div class="play-row">
+      <button class="primary" id="btnContinue" hidden>Continuer</button>
       <button class="primary" id="btnPlay">Jouer</button>
       <button id="btnTest">Mode test</button>
     </div>
-    <p class="hint">Mode test : argent illimité, et un bouton pour passer au jour suivant.</p>
+    <p class="hint">Mode test : argent illimité, et un bouton pour passer au jour suivant. La partie en cours est sauvegardée automatiquement.</p>
   </div>
 </div>
 
@@ -203,6 +204,7 @@ body.paper .sheet h2 { font-size: 2.3rem; color: var(--accent); }
   <div class="sheet stack">
     <h2>Pause</h2>
     <button class="primary" id="btnResume">Reprendre</button>
+    <button id="btnSaveQuit">Sauvegarder et quitter</button>
     <button id="btnQuit">Abandonner la partie</button>
   </div>
 </div>

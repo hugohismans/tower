@@ -9,6 +9,14 @@ Deux styles graphiques au choix dans le menu : **Désert** (couleurs) et **Papie
 
 Pour jouer : ouvre `index.html` dans un navigateur (pas de build, pas de dépendance).
 
+## Sauvegarde
+
+La partie en cours est sauvegardée automatiquement dans le navigateur (toutes les 3 s pendant
+le jour, à chaque pause, à chaque achat, au début de la nuit, et quand l'appli passe en
+arrière-plan). Dans le menu, **Continuer** reprend exactement où tu en étais (en pause si
+c'était en plein jour). Dans la pause : **Sauvegarder et quitter**. La sauvegarde est effacée
+quand le bâtiment tombe ou si tu abandonnes.
+
 ## Mode test
 
 Bouton **Mode test** dans le menu : argent illimité (∞ $) et bouton **Jour suivant** en haut
