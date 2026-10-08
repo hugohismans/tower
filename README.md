@@ -1,7 +1,11 @@
 # Sniper
 
-Tower defense pour mobile (et PC). Tu es un sniper sur le toit d'un bâtiment.
-Des stickmen arrivent par la gauche et tu dois tenir le plus de jours possible.
+Tower defense pour mobile (et PC). L'écran est la fenêtre du sniper : il voit le désert
+en perspective, le bâtiment à défendre et le mur devant. Des stickmen arrivent par la
+gauche le long d'un couloir, se répartissent le long du mur et l'attaquent.
+Tu dois tenir le plus de jours possible.
+
+Deux styles graphiques au choix dans le menu : **Désert** (couleurs) et **Papier** (stylo bleu).
 
 Pour jouer : ouvre `index.html` dans un navigateur (pas de build, pas de dépendance).
 

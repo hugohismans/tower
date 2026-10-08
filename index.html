@@ -1,31 +1,51 @@
 <title>Sniper</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#f4f6f8">
+<meta name="theme-color" content="#e9b77a">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat+Brush&family=Kalam:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat+Brush&family=Fredoka:wght@500;600;700&family=Kalam:wght@400;700&family=Rye&display=swap">
 <style>
-/* Layout : plein écran. Le terrain est dessiné au stylo bleu sur papier quadrillé (comme le croquis),
-   le HUD et les menus sont des feuilles posées par-dessus. Un seul thème, volontairement "papier". */
+/* Layout : plein écran, l'écran est la fenêtre du sniper qui donne sur le désert.
+   HUD en haut, arme en bas à gauche, menus en panneaux de bois clair par-dessus.
+   Deux styles au choix (Désert / Papier) : un seul thème chacun, choisi dans le menu. */
 :root {
-  --paper: #f4f6f8;
-  --sheet: #fdfdfb;
-  --ink: #22409a;
-  --ink-dark: #172347;
+  --bg: #e9b77a;
+  --panel: #fff4e0;
+  --panel-2: #f6e3c3;
+  --ink: #3a2a20;
+  --muted: #7a5f4a;
+  --accent: #d9622b;
+  --accent-ink: #fff4e0;
+  --gold: #c98410;
+  --line: rgba(58, 42, 32, 0.25);
+  --scrim: rgba(40, 22, 10, 0.35);
+  --scrim-night: rgba(10, 14, 36, 0.55);
+  --f-display: "Rye", "Georgia", serif;
+  --f-body: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  --radius: 14px;
+  color-scheme: light;
+}
+body.paper {
+  --bg: #f4f6f8;
+  --panel: #fdfdfb;
+  --panel-2: #eef2fb;
+  --ink: #172347;
   --muted: #5d6b92;
-  --red: #c62f3a;
+  --accent: #22409a;
+  --accent-ink: #fdfdfb;
   --gold: #a86f0b;
   --line: rgba(34, 64, 154, 0.22);
+  --scrim: rgba(23, 35, 71, 0.18);
+  --scrim-night: rgba(10, 16, 40, 0.55);
   --f-display: "Caveat Brush", "Kalam", "Comic Sans MS", cursive;
   --f-body: "Kalam", "Comic Sans MS", "Segoe Print", cursive;
-  --hand: 255px 14px 225px 14px / 14px 225px 14px 255px;
-  color-scheme: light;
+  --radius: 18px 6px 22px 8px / 8px 20px 6px 18px;
 }
 html, body { height: 100%; }
 [hidden] { display: none !important; }
 body {
-  margin: 0; overflow: hidden; background: var(--paper); color: var(--ink-dark);
+  margin: 0; overflow: hidden; background: var(--bg); color: var(--ink);
   font-family: var(--f-body); font-size: 16px;
   touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   overscroll-behavior: none; -webkit-tap-highlight-color: transparent;
@@ -33,16 +53,17 @@ body {
 #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
 
 button {
-  font: 700 1rem/1 var(--f-body); color: var(--ink); background: var(--sheet);
-  border: 2px solid var(--ink); border-radius: var(--hand); padding: 0.45em 0.9em; cursor: pointer;
-  touch-action: manipulation;
+  font: 600 1rem/1 var(--f-body); color: var(--ink); background: var(--panel);
+  border: 2.5px solid var(--ink); border-radius: 10px; padding: 0.45em 0.9em; cursor: pointer;
+  box-shadow: 0 3px 0 var(--ink); touch-action: manipulation;
 }
-button:hover:not(:disabled) { background: #eef2fb; }
-button:active:not(:disabled) { transform: translateY(1px); }
+body.paper button { border-radius: 255px 14px 225px 14px / 14px 225px 14px 255px; box-shadow: none; border-width: 2px; }
+button:hover:not(:disabled) { background: var(--panel-2); }
+button:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
 button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
-button:disabled { color: var(--muted); border-color: var(--line); cursor: not-allowed; }
-.primary { background: var(--ink); color: var(--sheet); font-size: 1.25rem; padding: 0.55em 1.4em; }
-.primary:hover:not(:disabled) { background: var(--ink-dark); }
+button:disabled { color: var(--muted); border-color: var(--line); box-shadow: 0 3px 0 var(--line); cursor: not-allowed; }
+.primary { background: var(--accent); color: var(--accent-ink); font-size: 1.25rem; padding: 0.55em 1.4em; }
+.primary:hover:not(:disabled) { background: var(--accent); filter: brightness(1.08); }
 
 /* HUD */
 .hud {
@@ -51,45 +72,54 @@ button:disabled { color: var(--muted); border-color: var(--line); cursor: not-al
   pointer-events: none;
 }
 .hud > * { pointer-events: auto; }
-.hud-day { font: 1.7rem/1 var(--f-display); color: var(--ink); }
-.sunbar { width: 130px; height: 6px; border: 1.5px solid var(--ink); border-radius: 6px; margin-top: 4px; overflow: hidden; }
-.sunbar i { display: block; height: 100%; width: 0; background: var(--gold); }
-.hud-money { font: 700 1.5rem/1 var(--f-body); color: var(--gold); font-variant-numeric: tabular-nums; padding-top: 2px; }
+.chip {
+  background: var(--panel); border: 2.5px solid var(--ink); border-radius: 12px; padding: 5px 12px;
+  box-shadow: 0 3px 0 var(--ink);
+}
+body.paper .chip { box-shadow: none; border-width: 2px; border-radius: 255px 14px 225px 14px / 14px 225px 14px 255px; }
+.hud-day { font: 1.25rem/1 var(--f-display); }
+.sunbar { width: 120px; height: 7px; border: 2px solid var(--ink); border-radius: 6px; margin-top: 5px; overflow: hidden; background: var(--panel-2); }
+.sunbar i { display: block; height: 100%; width: 0; background: var(--accent); }
+.hud-money { font: 700 1.35rem/1 var(--f-body); color: var(--gold); font-variant-numeric: tabular-nums; }
 .hud-btns { display: flex; gap: 8px; }
-.hud-btns button { padding: 0.3em 0.7em; font-size: 0.95rem; }
+.hud-btns button { padding: 0.35em 0.7em; font-size: 0.95rem; }
 
 .weapon {
   position: fixed; left: calc(env(safe-area-inset-left, 0px) + 14px); bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
-  display: flex; flex-direction: column; gap: 4px; align-items: flex-start;
-  background: rgba(253, 253, 251, 0.82); border: 2px solid var(--ink); border-radius: var(--hand);
-  padding: 6px 12px; cursor: pointer; color: var(--ink);
+  display: flex; flex-direction: column; gap: 5px; align-items: flex-start; cursor: pointer;
 }
 .weapon-name { font-weight: 700; font-size: 0.95rem; line-height: 1; }
-.ammo { display: flex; flex-wrap: wrap; gap: 3px; max-width: 220px; min-height: 12px; align-items: center; font-variant-numeric: tabular-nums; }
-.ammo i { width: 5px; height: 12px; border-radius: 2px; background: var(--ink); display: block; }
-.ammo i.empty { background: var(--line); }
+.ammo { display: flex; flex-wrap: wrap; gap: 3px; max-width: 220px; min-height: 13px; align-items: center; font-variant-numeric: tabular-nums; }
+.ammo i { width: 6px; height: 13px; border-radius: 3px 3px 1px 1px; background: var(--gold); border: 1.5px solid var(--ink); display: block; }
+.ammo i.empty { background: transparent; border-color: var(--line); }
 .ammo span { font-size: 0.9rem; font-weight: 700; }
 
-/* Feuilles (menus) */
+/* Panneaux (menus) */
 .overlay {
   position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
   padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px calc(env(safe-area-inset-bottom, 0px) + 12px);
-  background: rgba(23, 35, 71, 0.18);
+  background: var(--scrim);
 }
-.overlay.night { background: rgba(10, 16, 40, 0.55); }
+.overlay.night { background: var(--scrim-night); }
 .sheet {
-  background: var(--sheet); border: 2px solid var(--ink); border-radius: 18px 6px 22px 8px / 8px 20px 6px 18px;
-  box-shadow: 4px 5px 0 rgba(23, 35, 71, 0.18);
-  padding: 20px 24px; max-width: 560px; width: 100%; max-height: 100%; overflow: auto; text-align: center;
+  background: var(--panel); border: 3px solid var(--ink); border-radius: var(--radius);
+  box-shadow: 0 6px 0 var(--ink);
+  padding: 18px 24px; max-width: 580px; width: 100%; max-height: 100%; overflow: auto; text-align: center;
 }
-.sheet h1 { font: 4.4rem/0.9 var(--f-display); color: var(--ink); margin: 0; letter-spacing: 0.04em; text-wrap: balance; }
-.sheet h2 { font: 2.3rem/1 var(--f-display); color: var(--ink); margin: 0; text-wrap: balance; }
+body.paper .sheet { border-width: 2px; box-shadow: 4px 5px 0 rgba(23, 35, 71, 0.18); }
+.sheet h1 { font: 3.6rem/1 var(--f-display); color: var(--accent); margin: 0; letter-spacing: 0.04em; text-wrap: balance; text-shadow: 0 3px 0 var(--ink); }
+body.paper .sheet h1 { font-size: 4.4rem; text-shadow: none; }
+.sheet h2 { font: 1.9rem/1.05 var(--f-display); color: var(--ink); margin: 0; text-wrap: balance; }
+body.paper .sheet h2 { font-size: 2.3rem; color: var(--accent); }
 .sheet p { margin: 0; line-height: 1.35; }
 .stack { display: flex; flex-direction: column; gap: 12px; align-items: center; }
 .tagline { color: var(--muted); font-size: 1.05rem; }
-.howto { text-align: left; display: grid; gap: 4px; font-size: 0.98rem; max-width: 46ch; }
-.howto b { color: var(--ink); }
+.howto { text-align: left; display: grid; gap: 4px; font-size: 0.98rem; max-width: 48ch; }
+.howto b { color: var(--accent); }
 .best { color: var(--gold); font-weight: 700; }
+.styles { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.styles span { font-weight: 600; color: var(--muted); }
+.styles button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
 
 /* Boutique de nuit */
 .shop { max-width: 920px; text-align: left; padding: 14px 18px 18px; }
@@ -97,13 +127,13 @@ button:disabled { color: var(--muted); border-color: var(--line); cursor: not-al
 .shop-head .money { font: 700 1.6rem/1 var(--f-body); color: var(--gold); font-variant-numeric: tabular-nums; }
 .recap { color: var(--muted); font-size: 0.95rem; width: 100%; }
 .groups { display: grid; gap: 10px; margin-block: 10px; }
-.group-title { font: 1.4rem/1 var(--f-display); color: var(--ink); margin: 4px 0 6px; }
+.group-title { font: 1.25rem/1 var(--f-display); color: var(--accent); margin: 4px 0 8px; }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
 .card {
   display: flex; flex-direction: column; gap: 4px; min-width: 0;
-  border: 1.5px solid var(--line); border-radius: 10px 4px 12px 5px / 5px 12px 4px 10px; padding: 8px 10px;
+  background: var(--panel-2); border: 2px solid var(--line); border-radius: 10px; padding: 8px 10px;
 }
-.card .name { font-weight: 700; color: var(--ink-dark); line-height: 1.1; }
+.card .name { font-weight: 700; line-height: 1.1; }
 .card .desc { font-size: 0.86rem; color: var(--muted); line-height: 1.2; flex: 1; }
 .card button { align-self: flex-start; font-variant-numeric: tabular-nums; padding: 0.35em 0.8em; }
 .card.locked { opacity: 0.6; }
@@ -111,31 +141,31 @@ button:disabled { color: var(--muted); border-color: var(--line); cursor: not-al
 
 #rotate { display: none; }
 @media (orientation: portrait) and (max-width: 700px) {
-  #rotate:not(.dismissed) { display: flex; z-index: 50; background: var(--paper); }
+  #rotate:not(.dismissed) { display: flex; z-index: 50; background: var(--bg); }
 }
 @media (max-height: 430px) {
-  .sheet h1 { font-size: 3.2rem; }
+  .sheet h1 { font-size: 2.8rem; }
   .sheet { padding: 12px 18px; }
-  .hud-day { font-size: 1.4rem; }
+  .hud-day { font-size: 1.1rem; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
-<canvas id="game" aria-label="Terrain de jeu"></canvas>
+<canvas id="game" aria-label="Vue du sniper sur le désert"></canvas>
 
 <div class="hud" id="hud" hidden>
-  <div>
+  <div class="chip">
     <div class="hud-day" id="hudDay">Jour 1</div>
     <div class="sunbar" aria-hidden="true"><i id="hudSun"></i></div>
   </div>
-  <div class="hud-money" id="hudMoney">0 $</div>
+  <div class="hud-money chip" id="hudMoney">0 $</div>
   <div class="hud-btns">
     <button id="btnSound" aria-pressed="false">Son</button>
     <button id="btnPause" aria-label="Pause">Pause</button>
   </div>
 </div>
 
-<div class="weapon" id="weapon" hidden title="Toucher pour recharger">
+<div class="weapon chip" id="weapon" hidden title="Toucher pour recharger">
   <div class="weapon-name" id="wName">Fusil de sniper</div>
   <div class="ammo" id="wAmmo"></div>
 </div>
@@ -143,11 +173,16 @@ button:disabled { color: var(--muted); border-color: var(--line); cursor: not-al
 <div class="overlay" id="title">
   <div class="sheet stack">
     <h1>SNIPER</h1>
-    <p class="tagline">Tiens le bâtiment. Un jour de plus, puis encore un.</p>
+    <p class="tagline">Ta fenêtre donne sur le désert. Ils arrivent par la gauche.</p>
     <div class="howto">
       <p><b>Touche un ennemi</b> pour tirer. Une balle dans la <b>tête</b> fait 2,5× plus de dégâts.</p>
       <p><b>Touche une roquette</b> en vol pour la faire exploser avant l'impact.</p>
       <p>La <b>nuit</b>, dépense ton argent : mur, étages, tireurs, armes.</p>
+    </div>
+    <div class="styles" role="group" aria-label="Style graphique">
+      <span>Style :</span>
+      <button id="styleDesert" aria-pressed="true">Désert</button>
+      <button id="stylePaper" aria-pressed="false">Papier</button>
     </div>
     <p class="best" id="best"></p>
     <button class="primary" id="btnPlay">Jouer</button>
@@ -179,6 +214,7 @@ button:disabled { color: var(--muted); border-color: var(--line); cursor: not-al
     <h2>Le bâtiment est tombé</h2>
     <p id="overText"></p>
     <button class="primary" id="btnRetry">Rejouer</button>
+    <button id="btnMenu">Menu</button>
   </div>
 </div>
 
