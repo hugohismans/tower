@@ -117,6 +117,8 @@ body.paper .sheet h2 { font-size: 2.3rem; color: var(--accent); }
 .howto { text-align: left; display: grid; gap: 4px; font-size: 0.98rem; max-width: 48ch; }
 .howto b { color: var(--accent); }
 .best { color: var(--gold); font-weight: 700; }
+.play-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; }
+.hint { color: var(--muted); font-size: 0.85rem; }
 .styles { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
 .styles span { font-weight: 600; color: var(--muted); }
 .styles button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
@@ -161,6 +163,7 @@ body.paper .sheet h2 { font-size: 2.3rem; color: var(--accent); }
   </div>
   <div class="hud-money chip" id="hudMoney">0 $</div>
   <div class="hud-btns">
+    <button id="btnSkip" hidden>Jour suivant</button>
     <button id="btnSound" aria-pressed="false">Son</button>
     <button id="btnPause" aria-label="Pause">Pause</button>
   </div>
@@ -186,7 +189,11 @@ body.paper .sheet h2 { font-size: 2.3rem; color: var(--accent); }
       <button id="stylePaper" aria-pressed="false">Papier</button>
     </div>
     <p class="best" id="best"></p>
-    <button class="primary" id="btnPlay">Jouer</button>
+    <div class="play-row">
+      <button class="primary" id="btnPlay">Jouer</button>
+      <button id="btnTest">Mode test</button>
+    </div>
+    <p class="hint">Mode test : argent illimité, et un bouton pour passer au jour suivant.</p>
   </div>
 </div>
 

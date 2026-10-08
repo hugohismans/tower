@@ -9,6 +9,11 @@ Deux styles graphiques au choix dans le menu : **Désert** (couleurs) et **Papie
 
 Pour jouer : ouvre `index.html` dans un navigateur (pas de build, pas de dépendance).
 
+## Mode test
+
+Bouton **Mode test** dans le menu : argent illimité (∞ $) et bouton **Jour suivant** en haut
+pour sauter directement à la nuit. Le record n'est pas enregistré dans ce mode.
+
 ## Boucle de jeu
 
 - **Jour** = un niveau. Les ennemis arrivent par la gauche pendant toute la journée

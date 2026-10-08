@@ -173,10 +173,23 @@ const bldH = () => S.bld.floors * FH;
 // ---------------------------------------------------------------------------
 // Déroulement : jours et nuits
 // ---------------------------------------------------------------------------
-function newGame() {
+// Mode test : argent illimité et bouton pour passer au jour suivant
+function newGame(test) {
   S = makeState('day');
+  S.test = !!test;
+  if (S.test) S.money = Infinity;
+  $('btnSkip').hidden = !S.test;
   startDay();
 }
+
+function skipDay() {
+  if (S.mode !== 'day' && S.mode !== 'paused') return;
+  $('pause').hidden = true;
+  S.queue = []; S.enemies = []; S.proj = [];
+  endDay();
+}
+
+const moneyText = () => S.money === Infinity ? '∞ $' : `${S.money} $`;
 
 function startDay() {
   S.day++;
@@ -214,7 +227,7 @@ function endDay() {
   pointer.down = false;
   const bonus = 40 + S.day * 15;
   S.money += bonus;
-  if (S.day > best) { best = S.day; try { localStorage.setItem('sniper.best', best); } catch (e) { /* ignore */ } }
+  if (!S.test && S.day > best) { best = S.day; try { localStorage.setItem('sniper.best', best); } catch (e) { /* ignore */ } }
   $('shopTitle').textContent = `Nuit ${S.day}`;
   $('shopRecap').textContent = `Jour ${S.day} tenu. ${S.dayKills} ennemis abattus, ${S.dayMoney} $ gagnés, prime de nuit +${bonus} $.`;
   $('btnNext').textContent = `Commencer le jour ${S.day + 1}`;
@@ -225,7 +238,7 @@ function endDay() {
 function gameOver() {
   S.mode = 'over';
   pointer.down = false;
-  const held = S.day - 1, rec = Math.max(best, held);
+  const held = S.day - 1, rec = S.test ? best : Math.max(best, held);
   $('overText').textContent = `Tu as tenu ${held} jour${held > 1 ? 's' : ''} et abattu ${S.kills} ennemis. Record : ${rec} jour${rec > 1 ? 's' : ''}.`;
   $('over').hidden = false;
   $('weapon').hidden = true;
@@ -234,7 +247,7 @@ function gameOver() {
 function toTitle() {
   S = makeState('title');
   hideAll();
-  $('hud').hidden = true; $('weapon').hidden = true;
+  $('hud').hidden = true; $('weapon').hidden = true; $('btnSkip').hidden = true;
   $('title').hidden = false;
   showBest();
 }
@@ -888,7 +901,7 @@ function drawBuilding() {
   }
   S.allies.forEach((a, i) => drawAlly(a, i));
   const top = P3(BX0, h + 14, (BZ0 + BZ1) / 2);
-  hpBar(top.x - 20, top.y - 10, 120, ratio);
+  hpBar(top.x - 20, Math.max(62, top.y - 10), 120, ratio);
 }
 
 function windowQuad(pts, deco) {
@@ -1264,7 +1277,7 @@ function updateHud() {
   hudCache = key;
   $('hudDay').textContent = `Jour ${S.day}`;
   $('hudSun').style.width = `${p * 100}%`;
-  $('hudMoney').textContent = `${S.money} $`;
+  $('hudMoney').textContent = moneyText();
   $('wName').textContent = ws.name;
   const am = $('wAmmo');
   if (S.w.reloading > 0) am.innerHTML = '<span>Rechargement…</span>';
@@ -1325,7 +1338,7 @@ const SHOP = [
 ];
 
 function renderShop() {
-  $('shopMoney').textContent = `${S.money} $`;
+  $('shopMoney').textContent = moneyText();
   const root = $('shopGroups');
   root.innerHTML = '';
   for (const g of SHOP) {
@@ -1452,11 +1465,13 @@ $('btnPlay').addEventListener('click', () => {
   ensureAudio();
   try { document.documentElement.requestFullscreen?.().catch(() => {}); } catch (e) { /* ignore */ }
   try { screen.orientation?.lock?.('landscape').catch(() => {}); } catch (e) { /* ignore */ }
-  newGame();
+  newGame(false);
 });
 $('styleDesert').addEventListener('click', () => setStyle('desert'));
 $('stylePaper').addEventListener('click', () => setStyle('paper'));
-$('btnRetry').addEventListener('click', newGame);
+$('btnTest').addEventListener('click', () => { ensureAudio(); newGame(true); });
+$('btnSkip').addEventListener('click', skipDay);
+$('btnRetry').addEventListener('click', () => newGame(S.test));
 $('btnMenu').addEventListener('click', toTitle);
 $('btnNext').addEventListener('click', () => { ensureAudio(); startDay(); });
 $('btnPause').addEventListener('click', () => setPaused(S.mode === 'day'));
